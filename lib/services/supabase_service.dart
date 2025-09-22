@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/crypto_util.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -32,9 +33,16 @@ class SupabaseService {
     });
   }
 
-  // Insert user profile
+  // Insert user profile (encrypt sensitive fields before storing)
   Future<void> insertUserProfile(Map<String, dynamic> profileData) async {
-    await _supabase.from('registrations').insert(profileData);
+    final data = Map<String, dynamic>.from(profileData);
+
+    // Encrypt Aadhaar and emergency contact numbers
+    data['aadhar_number'] = await CryptoUtil.encryptString(profileData['aadhar_number']);
+    data['emergency_contact_1_number'] = await CryptoUtil.encryptString(profileData['emergency_contact_1_number']);
+    data['emergency_contact_2_number'] = await CryptoUtil.encryptString(profileData['emergency_contact_2_number']);
+
+    await _supabase.from('registrations').insert(data);
   }
 
   // Check if user exists in user_credentials
@@ -98,6 +106,17 @@ class SupabaseService {
         .select()
         .eq('contact_number', phone)
         .single();
+
+    if (response == null) return null;
+
+    // Decrypt sensitive fields (handles legacy plaintext gracefully)
+    response['aadhar_number'] =
+        await CryptoUtil.decryptString(response['aadhar_number']);
+    response['emergency_contact_1_number'] =
+        await CryptoUtil.decryptString(response['emergency_contact_1_number']);
+    response['emergency_contact_2_number'] =
+        await CryptoUtil.decryptString(response['emergency_contact_2_number']);
+
     return response;
   }
 

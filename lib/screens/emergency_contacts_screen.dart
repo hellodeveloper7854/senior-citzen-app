@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/supabase_service.dart';
+import '../utils/crypto_util.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
   const EmergencyContactsScreen({super.key});
@@ -27,6 +28,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         final credentials = await _supabaseService.getUserCredentials(email);
         if (credentials != null) {
           final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+          if (profile != null) {
+            profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
+            profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+            profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+          }
           setState(() {
             _userProfile = profile;
             _isLoading = false;

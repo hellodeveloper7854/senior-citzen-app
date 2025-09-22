@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
+import '../utils/crypto_util.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,6 +27,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final credentials = await _supabaseService.getUserCredentials(email);
         if (credentials != null) {
           final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+          if (profile != null) {
+            profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
+            profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+            profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+          }
           setState(() {
             _userProfile = profile;
             _isLoading = false;
