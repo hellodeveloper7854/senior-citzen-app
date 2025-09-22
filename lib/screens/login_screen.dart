@@ -1,9 +1,69 @@
 import 'package:flutter/material.dart';
-import 'auth_choice_screen.dart';
+import 'signup_screen.dart';
 import 'dashboard_screen.dart';
+import 'under_verification_screen.dart';
+import '../services/supabase_service.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final SupabaseService _supabaseService = SupabaseService();
+  bool _isPasswordVisible = false;
+
+  Future<void> _login() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter email and password')));
+      return;
+    }
+
+    try {
+      var credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User doesn\'t exist')));
+        return;
+      }
+
+      if (credentials['password'] != password) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please use correct password')));
+        return;
+      }
+
+      // Get profile
+      var profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      if (profile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile not found')));
+        return;
+      }
+
+      // Store current user email
+      await _supabaseService.setCurrentUserEmail(email);
+
+      if (profile['status'] == 'verified') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      } else {
+        // Navigate to under verification screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const UnderVerificationScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +134,7 @@ class LoginScreen extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
                   child: TextField(
+                    controller: _emailController,
                     decoration: InputDecoration(
                       hintText: 'Enter your email',
                       filled: true,
@@ -91,7 +152,8 @@ class LoginScreen extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
                   child: TextField(
-                    obscureText: true,
+                    controller: _passwordController,
+                    obscureText: !_isPasswordVisible,
                     decoration: InputDecoration(
                       hintText: 'Enter password',
                       filled: true,
@@ -100,6 +162,16 @@ class LoginScreen extends StatelessWidget {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                       ),
                     ),
                   ),
@@ -133,12 +205,7 @@ class LoginScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => DashboardScreen()),
-                      );
-                    },
+                    onPressed: _login,
                     child: const Text(
                       'Sign In',
                       style: TextStyle(
@@ -158,7 +225,7 @@ class LoginScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const AuthChoiceScreen(),
+                            builder: (context) => const SignupScreen(),
                           ),
                         );
                       },

@@ -1,7 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class SosScreen extends StatelessWidget {
+class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
+
+  @override
+  _SosScreenState createState() => _SosScreenState();
+}
+
+class _SosScreenState extends State<SosScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _makePhoneCall();
+  }
+
+  Future<void> _makePhoneCall() async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: '02225445353');
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      // Handle error - could show a snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch phone dialer')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

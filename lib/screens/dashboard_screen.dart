@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'sos_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'helpline_screen.dart';
 import 'record_screen.dart';
 import 'track_me_screen.dart';
 import 'settings_screen.dart';
+import 'welcome_screen.dart';
+import 'profile_screen.dart';
+import '../services/supabase_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +18,21 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class DashboardScreenState extends State<DashboardScreen> {
+  final SupabaseService _supabaseService = SupabaseService();
+
+
+  Future<void> _makeEmergencyCall() async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: '02225445353');
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch phone dialer')),
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,29 +72,62 @@ class DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
+                // Settings and Logout buttons top right
+                Positioned(
+                  top: 20,
+                  right: 20,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.settings, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          );
+                        },
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final supabaseService = SupabaseService();
+                          await supabaseService.clearCurrentUser();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                            (route) => false,
+                          );
+                        },
+                        child: const Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                // Profile avatar with welcome text
 Center(
-  child: Column(
-    mainAxisAlignment: MainAxisAlignment.center, // vertical center inside Center
-    crossAxisAlignment: CrossAxisAlignment.center, // horizontal center
-    children: [
-      const SizedBox(height: 40),
-      const CircleAvatar(
-        radius: 45,
-        backgroundImage: AssetImage('assets/Ellipse.png'),
-      ),
-      const SizedBox(height: 20),
-      const Text(
-        'Welcome,User !',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ],
-  ),
+ child: Column(
+   mainAxisAlignment: MainAxisAlignment.center, // vertical center inside Center
+   crossAxisAlignment: CrossAxisAlignment.center, // horizontal center
+   children: [
+     const SizedBox(height: 40),
+     const CircleAvatar(
+       radius: 45,
+       backgroundImage: AssetImage('assets/Ellipse.png'),
+     ),
+     const SizedBox(height: 20),
+     const Text(
+       'Welcome,User !',
+       textAlign: TextAlign.center,
+       style: TextStyle(
+         color: Colors.white,
+         fontSize: 20,
+         fontWeight: FontWeight.bold,
+       ),
+     ),
+   ],
+ ),
 )
 
               ],
@@ -95,12 +147,7 @@ Center(
                   _buildCustomCard(
                     'SOS',
                     'assets/sos.png',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SosScreen()),
-                      );
-                    },
+                    _makeEmergencyCall,
                   ),
                   _buildCustomCard(
                     'Emergency\nContacts',
@@ -112,46 +159,46 @@ Center(
                       );
                     },
                   ),
-                  _buildCustomCard(
-                    'Helpline',
-                    'assets/helpline.png',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HelplineScreen()),
-                      );
-                    },
-                  ),
-                  _buildCustomCard(
-                    'Record',
-                    'assets/microphone.png',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const RecordScreen()),
-                      );
-                    },
-                  ),
-                  _buildCustomCard(
-                    'Track Me\n(Advanced)',
-                    'assets/location.png',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TrackMeScreen()),
-                      );
-                    },
-                  ),
-                  _buildCustomCard(
-                    'Support',
-                    'assets/contact_service.png',
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                      );
-                    },
-                  ),
+                  // _buildCustomCard(
+                  //   'Helpline',
+                  //   'assets/helpline.png',
+                  //   () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (context) => const HelplineScreen()),
+                  //     );
+                  //   },
+                  // ),
+                  // _buildCustomCard(
+                  //   'Record',
+                  //   'assets/microphone.png',
+                  //   () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (context) => const RecordScreen()),
+                  //     );
+                  //   },
+                  // ),
+                  // _buildCustomCard(
+                  //   'Track Me\n(Advanced)',
+                  //   'assets/location.png',
+                  //   () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (context) => const TrackMeScreen()),
+                  //     );
+                  //   },
+                  // ),
+                  // _buildCustomCard(
+                  //   'Support',
+                  //   'assets/contact_service.png',
+                  //   () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  //     );
+                  //   },
+                  // ),
                 ],
               ),
             ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'auth_choice_screen.dart';
+import 'login_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -131,7 +131,7 @@ class WelcomeScreen extends StatelessWidget {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const AuthChoiceScreen(),
+                                      const LoginScreen(),
                                 ),
                               );
                             },
