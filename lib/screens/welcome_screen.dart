@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'auth_choice_screen.dart';
+import 'login_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -16,7 +16,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AuthChoiceScreen()),
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     });
   }
@@ -95,11 +95,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 40),
-                  child: Image.asset(
-                    'assets/undraw_mobile_ux_o0e1.png',
-                    width: 220,
-                    height: 220,
-                    fit: BoxFit.contain,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/Senior Citizen.png',
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'आधारवड',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFCC5A0B),
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -139,18 +154,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 30),
-                        // Loading indicator for splash screen
-                        const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1F2937)),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Loading...',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
+                        const SizedBox(height: 10),
                         SizedBox(
                             height:
                                 MediaQuery.of(context).padding.bottom + 20),

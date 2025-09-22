@@ -75,6 +75,7 @@ flutter:
     - assets/undraw_my_notifications_rjej.png
     - assets/contact_service.png
     - assets/Ellipse.png
+    - assets/Senior Citizen.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -111,8 +112,8 @@ flutter_launcher_icons:
   image_path: "assets/SnehaBandh.png"
 
 flutter_native_splash:
-  color: "#FFFFFF"              # background color
-  image: assets/SnehaBandh.png # your splash logo
+  color: "#F5F5F7"              # background color
+  image: "assets/Senior Citizen.png" # splash logo
   android: true
   ios: true
   web: true
