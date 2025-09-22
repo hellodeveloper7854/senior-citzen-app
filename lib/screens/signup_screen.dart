@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../services/supabase_service.dart';
 import 'under_verification_screen.dart';
 import 'login_screen.dart';
@@ -38,6 +40,10 @@ class SignupScreenState extends State<SignupScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
 
   final SupabaseService _supabaseService = SupabaseService();
+
+  // Optional profile image
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _pickedImage;
 
   final List<String> _genders = ['Male', 'Female', 'Other'];
   final List<String> _maritalStatuses = ['Married', 'Unmarried', 'Divorced', 'Widowed'];
@@ -142,6 +148,18 @@ class SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (image != null) {
+      setState(() {
+        _pickedImage = image;
+      });
+    }
+  }
+
   Widget _buildStepContent() {
     switch (_currentStep) {
       case 0:
@@ -238,6 +256,34 @@ class SignupScreenState extends State<SignupScreen> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               ),
               keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 20),
+
+            const Text('Profile Photo (optional)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: _pickedImage != null
+                      ? FileImage(File(_pickedImage!.path))
+                      : const AssetImage('assets/Ellipse.png') as ImageProvider,
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.photo),
+                  label: const Text('Choose from Gallery'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF3E0FAD),
+                    side: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -848,6 +894,20 @@ class SignupScreenState extends State<SignupScreen> {
         _contactNumberController.text,
       );
 
+      // Optional: upload profile photo if user selected one
+      String? profilePhotoUrl;
+      if (_pickedImage != null) {
+        try {
+          final file = File(_pickedImage!.path);
+          profilePhotoUrl = await _supabaseService.uploadProfilePhoto(
+            file,
+            _contactNumberController.text,
+          );
+        } catch (_) {
+          // Silent failure - keep it optional
+        }
+      }
+
       // Prepare profile data
       Map<String, dynamic> profileData = {
         'full_name': _fullNameController.text,
@@ -870,6 +930,7 @@ class SignupScreenState extends State<SignupScreen> {
         'medical_conditions': _selectedMedicalConditions,
         'other_medical_conditions': _otherMedicalController.text,
         'blood_group': _selectedBloodGroup,
+        'profile_photo_url': profilePhotoUrl,
       };
 
       await _supabaseService.insertUserProfile(profileData);

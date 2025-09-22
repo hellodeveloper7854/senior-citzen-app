@@ -19,6 +19,7 @@ class DashboardScreen extends StatefulWidget {
 class DashboardScreenState extends State<DashboardScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   String? _fullName;
+  String? _profilePhotoUrl;
 
   @override
   void initState() {
@@ -36,6 +37,8 @@ class DashboardScreenState extends State<DashboardScreen> {
           if (mounted) {
             setState(() {
               _fullName = (profile?['full_name'] as String?)?.trim();
+              final url = profile?['profile_photo_url'] as String?;
+              _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
             });
           }
         }
@@ -153,9 +156,11 @@ Center(
        },
        child: Stack(
          children: [
-           const CircleAvatar(
+           CircleAvatar(
              radius: 45,
-             backgroundImage: AssetImage('assets/Ellipse.png'),
+             backgroundImage: _profilePhotoUrl != null
+                 ? NetworkImage(_profilePhotoUrl!)
+                 : const AssetImage('assets/Ellipse.png') as ImageProvider,
            ),
            Positioned(
              bottom: 5,

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -98,5 +99,28 @@ class SupabaseService {
         .eq('contact_number', phone)
         .single();
     return response;
+  }
+
+  // Upload profile photo to Supabase Storage and return a public URL
+  // Make sure you have a public bucket named "profile-photos" in Supabase
+  Future<String> uploadProfilePhoto(File file, String phoneNumber) async {
+    final String fileExt = file.path.split('.').last.toLowerCase();
+    final String fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+    final String storagePath = 'profiles/$phoneNumber/$fileName';
+
+    // Upload file
+    await _supabase.storage.from('profile-photos').upload(
+      storagePath,
+      file,
+      fileOptions: FileOptions(
+        cacheControl: '3600',
+        upsert: true,
+        contentType: 'image/$fileExt',
+      ),
+    );
+
+    // Get public URL
+    final String publicUrl = _supabase.storage.from('profile-photos').getPublicUrl(storagePath);
+    return publicUrl;
   }
 }

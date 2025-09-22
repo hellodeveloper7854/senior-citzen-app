@@ -47,5 +47,9 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+
+		<!-- Photo Library permission for picking profile image -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app needs access to your photo library to select a profile picture.</string>
 	</dict>
 </plist>
