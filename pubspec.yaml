@@ -1,4 +1,4 @@
-name: snehaband
+name: aadharwad
 description: "Senior Citizen's safety app with SOS alerts, live location tracking, and volunteer network."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -109,7 +109,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/SnehaBandh.png"
+  image_path: "assets/Senior Citizen.png"
 
 flutter_native_splash:
   color: "#F5F5F7"              # background color
