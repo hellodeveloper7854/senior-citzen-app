@@ -17,6 +17,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _identifierController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _forgotIdentifierController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final SupabaseService _supabaseService = SupabaseService();
   bool _isPasswordVisible = false;
 
@@ -81,6 +84,75 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _forgotIdentifierController,
+                decoration: const InputDecoration(hintText: 'Enter email or phone'),
+              ),
+              TextField(
+                controller: _newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(hintText: 'New password'),
+              ),
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(hintText: 'Confirm password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                String identifier = _forgotIdentifierController.text.trim();
+                String newPass = _newPasswordController.text;
+                String confirmPass = _confirmPasswordController.text;
+
+                if (identifier.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+                  return;
+                }
+
+                if (newPass != confirmPass) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+                  return;
+                }
+
+                try {
+                  await _supabaseService.updatePassword(identifier, newPass);
+                  _forgotIdentifierController.clear();
+                  _newPasswordController.clear();
+                  _confirmPasswordController.clear();
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully')));
+                } catch (e) {
+                  if (e.toString().contains('User not found')) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User not found. Please create an account.')));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,31 +160,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Top circles decoration
-            Positioned(
-              top: -60,
-              left: -60,
-              child: Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple.withOpacity(0.7),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              top: -30,
-              left: 70,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.7),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
             // Main content
             SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 24),
@@ -200,9 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Center(
                     child: TextButton(
-                      onPressed: () {
-                        // Forgot password action
-                      },
+                      onPressed: _showForgotPasswordDialog,
                       child: const Text(
                         'Forgot Password',
                         style: TextStyle(

@@ -56,6 +56,18 @@ class SupabaseService {
     return response.first;
   }
 
+  // Update password
+  Future<void> updatePassword(String identifier, String newPassword) async {
+    bool isEmail = identifier.contains('@');
+    var existing = isEmail ? await getUserCredentials(identifier) : await getUserCredentialsByPhone(identifier);
+    if (existing == null) throw Exception('User not found');
+    if (isEmail) {
+      await _supabase.from('user_credentials').update({'password': newPassword}).eq('email', identifier);
+    } else {
+      await _supabase.from('user_credentials').update({'password': newPassword}).eq('phone_number', identifier);
+    }
+  }
+
   // Get user profile
   Future<Map<String, dynamic>?> getUserProfile(String email) async {
     final response = await _supabase
