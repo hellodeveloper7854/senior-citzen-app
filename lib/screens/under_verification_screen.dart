@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'welcome_screen.dart';
+import 'profile_screen.dart';
 import '../services/supabase_service.dart';
 
 class UnderVerificationScreen extends StatelessWidget {
@@ -11,22 +12,31 @@ class UnderVerificationScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Under Verification'),
         actions: [
-  TextButton(
-    onPressed: () async {
-      final supabaseService = SupabaseService();
-      await supabaseService.clearCurrentUser();
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-        (route) => false,
-      );
-    },
-    child: const Text(
-      'Logout',
-      style: TextStyle(color: Colors.white),
-    ),
-  ),
-],
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
+          TextButton(
+            onPressed: () async {
+              final supabaseService = SupabaseService();
+              await supabaseService.clearCurrentUser();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                (route) => false,
+              );
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
       body: const Center(
         child: Padding(

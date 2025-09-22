@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart';
 
 class RejectedScreen extends StatelessWidget {
   final String rejectionReason;
@@ -12,6 +13,17 @@ class RejectedScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Account Rejected'),
         automaticallyImplyLeading: false, // Remove back button
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
