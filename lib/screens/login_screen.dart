@@ -1,3 +1,5 @@
+import 'dart:ui' as ui show PathMetric;
+
 import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import 'dashboard_screen.dart';
@@ -79,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200], // Light background color similar to image
+      backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
         child: Stack(
           children: [
@@ -109,35 +111,38 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             // Main content
-            Column(
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 120),
+                const SizedBox(height: 90),
                 const Text(
-                  'Welcome Back!',
+                  'Welcome!',
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Placeholder Image with dashed border
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.grey,
-                      style: BorderStyle.solid, // Dashed border needs custom painter (simplified here)
-                      width: 0.7,
+                // App logo inside dashed border
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: DashedBorder(
+                    color: Color(0xFFD1D5DB),
+                    strokeWidth: 1,
+                    dashWidth: 6,
+                    dashGap: 4,
+                    radius: 12,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Image.asset(
+                        'assets/Senior Citizen.png',
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Image.asset(
-                    'assets/undraw_my_notifications_rjej.png', // Replace with your image asset path
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -188,18 +193,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 // Forgot Password Text Button
-                Container(
-                  margin: const EdgeInsets.only(right: 30, top: 5),
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // Forgot password action
-                    },
-                    child: const Text(
-                      'Forgot Password',
-                      style: TextStyle(
-                        color: Colors.indigo,
-                        fontSize: 14,
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: () {
+                        // Forgot password action
+                      },
+                      child: const Text(
+                        'Forgot Password',
+                        style: TextStyle(
+                          color: Colors.indigo,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -213,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     onPressed: _login,
@@ -230,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? "),
+                    const Text("Don't have an account ? "),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -241,14 +247,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: const Text(
-                        'Sign Up',
-                        style: TextStyle(color: Colors.indigo),
+                        'Start Enrollment',
+                        style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
+          ),
           ],
         ),
       ),
@@ -256,3 +263,92 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+
+
+// Dashed border widget and painter for the login logo box
+
+
+class DashedBorder extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashGap;
+  final double radius;
+
+  const DashedBorder({
+    super.key,
+    required this.child,
+    this.color = const Color(0xFFD1D5DB),
+    this.strokeWidth = 1,
+    this.dashWidth = 6,
+    this.dashGap = 4,
+    this.radius = 12,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      foregroundPainter: _DashedRectPainter(
+        color: color,
+        strokeWidth: strokeWidth,
+        dashWidth: dashWidth,
+        dashGap: dashGap,
+        radius: radius,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashGap;
+  final double radius;
+
+  _DashedRectPainter({
+    required this.color,
+    required this.strokeWidth,
+    required this.dashWidth,
+    required this.dashGap,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final path = Path()..addRRect(rrect);
+    for (final ui.PathMetric metric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double next = (distance + dashWidth).clamp(0, metric.length);
+        final segment = metric.extractPath(distance, next);
+        canvas.drawPath(segment, paint);
+        distance += dashWidth + dashGap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.dashWidth != dashWidth ||
+        oldDelegate.dashGap != dashGap ||
+        oldDelegate.radius != radius;
+  }
+}

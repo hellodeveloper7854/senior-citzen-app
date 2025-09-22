@@ -72,37 +72,21 @@ class DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
-                // Settings and Logout buttons top right
+                // Logout button top right
                 Positioned(
                   top: 20,
                   right: 20,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                          );
-                        },
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          final supabaseService = SupabaseService();
-                          await supabaseService.clearCurrentUser();
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-                            (route) => false,
-                          );
-                        },
-                        child: const Text(
-                          'Logout',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                      ),
-                    ],
+                  child: IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: () async {
+                      final supabaseService = SupabaseService();
+                      await supabaseService.clearCurrentUser();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
                   ),
                 ),
                // Profile avatar with welcome text
@@ -112,9 +96,37 @@ Center(
    crossAxisAlignment: CrossAxisAlignment.center, // horizontal center
    children: [
      const SizedBox(height: 40),
-     const CircleAvatar(
-       radius: 45,
-       backgroundImage: AssetImage('assets/Ellipse.png'),
+     InkWell(
+       onTap: () {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (context) => const ProfileScreen()),
+         );
+       },
+       child: Stack(
+         children: [
+           const CircleAvatar(
+             radius: 45,
+             backgroundImage: AssetImage('assets/Ellipse.png'),
+           ),
+           Positioned(
+             bottom: 5,
+             right: 5,
+             child: Container(
+               padding: const EdgeInsets.all(4),
+               decoration: const BoxDecoration(
+                 color: Color(0xFF3E0FAD),
+                 shape: BoxShape.circle,
+               ),
+               child: const Icon(
+                 Icons.edit,
+                 size: 16,
+                 color: Colors.white,
+               ),
+             ),
+           ),
+         ],
+       ),
      ),
      const SizedBox(height: 20),
      const Text(

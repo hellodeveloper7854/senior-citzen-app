@@ -104,16 +104,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         height: 200,
                         fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'आधारवड',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFCC5A0B),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
+                      // const SizedBox(height: 12),
+                      // const Text(
+                      //   'आधारवड',
+                      //   style: TextStyle(
+                      //     fontSize: 36,
+                      //     fontWeight: FontWeight.w800,
+                      //     color: Color(0xFFCC5A0B),
+                      //     letterSpacing: 1.0,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),
