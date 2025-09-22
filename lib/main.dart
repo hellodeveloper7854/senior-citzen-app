@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'screens/welcome_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/under_verification_screen.dart';
+import 'screens/rejected_screen.dart';
+import 'services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -13,19 +17,67 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final SupabaseService _supabaseService = SupabaseService();
+
+  Future<Widget> _getInitialScreen() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) {
+        return const WelcomeScreen();
+      }
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) {
+        return const WelcomeScreen();
+      }
+
+      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      if (profile == null) {
+        return const WelcomeScreen();
+      }
+
+      if (profile['status'] == 'verified') {
+        return const DashboardScreen();
+      } else if (profile['status'] == 'rejected') {
+        return RejectedScreen(rejectionReason: profile['rejection_reason'] ?? 'No reason provided');
+      } else {
+        return const UnderVerificationScreen();
+      }
+    } catch (e) {
+      return const WelcomeScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'स्नेहबंध',
+      title: 'आधारवड',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(),
+      home: FutureBuilder<Widget>(
+        future: _getInitialScreen(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          } else if (snapshot.hasError) {
+            return const WelcomeScreen();
+          } else {
+            return snapshot.data ?? const WelcomeScreen();
+          }
+        },
+      ),
     );
   }
 }
