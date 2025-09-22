@@ -903,8 +903,11 @@ class SignupScreenState extends State<SignupScreen> {
             file,
             _contactNumberController.text,
           );
-        } catch (_) {
-          // Silent failure - keep it optional
+        } catch (e) {
+          // Show an informative message but allow the registration to proceed
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profile photo upload failed: $e')),
+          );
         }
       }
 
@@ -934,6 +937,27 @@ class SignupScreenState extends State<SignupScreen> {
       };
 
       await _supabaseService.insertUserProfile(profileData);
+
+      // If user selected a photo but the URL wasn't set (upload failed earlier),
+      // try uploading again and update the profile row.
+      if (_pickedImage != null && (profilePhotoUrl == null || profilePhotoUrl.isEmpty)) {
+        try {
+          final file = File(_pickedImage!.path);
+          final uploadedUrl = await _supabaseService.uploadProfilePhoto(
+            file,
+            _contactNumberController.text,
+          );
+          await _supabaseService.updateProfilePhotoUrl(
+            _contactNumberController.text,
+            uploadedUrl,
+          );
+        } catch (e) {
+          // If it still fails, notify and continue
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Retry upload failed: $e')),
+          );
+        }
+      }
 
       // Navigate to under verification screen
       Navigator.pushReplacement(

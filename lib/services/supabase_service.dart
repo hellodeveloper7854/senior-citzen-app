@@ -123,4 +123,12 @@ class SupabaseService {
     final String publicUrl = _supabase.storage.from('profile-photos').getPublicUrl(storagePath);
     return publicUrl;
   }
+
+  // Update only the profile photo URL field for a given contact number
+  Future<void> updateProfilePhotoUrl(String phoneNumber, String publicUrl) async {
+    await _supabase
+        .from('registrations')
+        .update({'profile_photo_url': publicUrl})
+        .eq('contact_number', phoneNumber);
+  }
 }
