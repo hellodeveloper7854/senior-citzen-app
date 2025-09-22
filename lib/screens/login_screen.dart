@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import 'dashboard_screen.dart';
 import 'under_verification_screen.dart';
+import 'rejected_screen.dart';
 import '../services/supabase_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -52,6 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      } else if (profile['status'] == 'rejected') {
+        // Navigate to rejected screen with rejection reason
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RejectedScreen(
+              rejectionReason: profile['rejection_reason'] ?? 'No reason provided',
+            ),
+          ),
         );
       } else {
         // Navigate to under verification screen
