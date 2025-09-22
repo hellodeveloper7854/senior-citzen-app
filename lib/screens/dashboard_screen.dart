@@ -5,8 +5,7 @@ import 'emergency_contacts_screen.dart';
 import 'helpline_screen.dart';
 import 'record_screen.dart';
 import 'track_me_screen.dart';
-import 'settings_screen.dart';
-import 'welcome_screen.dart';
+import 'login_screen.dart';
 import 'profile_screen.dart';
 import '../services/supabase_service.dart';
 
@@ -19,7 +18,32 @@ class DashboardScreen extends StatefulWidget {
 
 class DashboardScreenState extends State<DashboardScreen> {
   final SupabaseService _supabaseService = SupabaseService();
+  String? _fullName;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadFullName();
+  }
+
+  Future<void> _loadFullName() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email != null) {
+        final credentials = await _supabaseService.getUserCredentials(email);
+        if (credentials != null) {
+          final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+          if (mounted) {
+            setState(() {
+              _fullName = (profile?['full_name'] as String?)?.trim();
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // silently ignore fetch errors
+    }
+  }
 
   Future<void> _makeEmergencyCall() async {
     final Uri phoneUri = Uri(scheme: 'tel', path: '02225445353');
@@ -42,7 +66,7 @@ class DashboardScreenState extends State<DashboardScreen> {
           // Header with purple background and circles
           Container(
             color: const Color(0xFF3E0FAD), // purple background
-            height: 240,
+            height: 260,
             width: double.infinity,
             child: Stack(
               children: [
@@ -72,21 +96,45 @@ class DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
-                // Logout button top right
+                // Top-left logo (overlay on the circle)
+                Positioned(
+                  top: 24,
+                  left: 24,
+                  child: Image.asset(
+                    'assets/Senior Citizen.png',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                // Settings and Logout buttons top right
                 Positioned(
                   top: 20,
                   right: 20,
-                  child: IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    onPressed: () async {
-                      final supabaseService = SupabaseService();
-                      await supabaseService.clearCurrentUser();
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-                        (route) => false,
-                      );
-                    },
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.settings, color: Colors.white),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        onPressed: () async {
+                          final supabaseService = SupabaseService();
+                          await supabaseService.clearCurrentUser();
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
                // Profile avatar with welcome text
@@ -128,11 +176,21 @@ Center(
          ],
        ),
      ),
-     const SizedBox(height: 20),
+     const SizedBox(height: 16),
      const Text(
-       'Welcome,User !',
+       'Welcome,',
        textAlign: TextAlign.center,
        style: TextStyle(
+         color: Colors.white,
+         fontSize: 18,
+         fontWeight: FontWeight.w600,
+       ),
+     ),
+     const SizedBox(height: 4),
+     Text(
+       _fullName ?? 'User',
+       textAlign: TextAlign.center,
+       style: const TextStyle(
          color: Colors.white,
          fontSize: 20,
          fontWeight: FontWeight.bold,
