@@ -150,4 +150,26 @@ class SupabaseService {
         .update({'profile_photo_url': publicUrl})
         .eq('contact_number', phoneNumber);
   }
+
+  // Update user profile fields for a given contact number (phone).
+  // Encrypts sensitive fields if they are present in the updates map.
+  Future<void> updateUserProfile(String phoneNumber, Map<String, dynamic> updates) async {
+    final data = Map<String, dynamic>.from(updates);
+
+    // Encrypt sensitive fields if present
+    if (data.containsKey('aadhar_number')) {
+      data['aadhar_number'] = await CryptoUtil.encryptString(data['aadhar_number']);
+    }
+    if (data.containsKey('emergency_contact_1_number')) {
+      data['emergency_contact_1_number'] = await CryptoUtil.encryptString(data['emergency_contact_1_number']);
+    }
+    if (data.containsKey('emergency_contact_2_number')) {
+      data['emergency_contact_2_number'] = await CryptoUtil.encryptString(data['emergency_contact_2_number']);
+    }
+
+    await _supabase
+        .from('registrations')
+        .update(data)
+        .eq('contact_number', phoneNumber);
+  }
 }

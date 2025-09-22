@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../utils/crypto_util.dart';
+import './edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -99,11 +100,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 30),
                       ElevatedButton(
-                        onPressed: () {
-                          // TODO: Implement edit functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Edit functionality coming soon')),
+                        onPressed: () async {
+                          if (_userProfile == null) return;
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditProfileScreen(
+                                initialProfile: Map<String, dynamic>.from(_userProfile!),
+                              ),
+                            ),
                           );
+                          if (result == true) {
+                            await _loadUserProfile();
+                          }
                         },
                         child: const Text('Edit Profile'),
                       ),
