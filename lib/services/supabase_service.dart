@@ -46,6 +46,16 @@ class SupabaseService {
     return response;
   }
 
+  // Get user credentials by phone
+  Future<Map<String, dynamic>?> getUserCredentialsByPhone(String phone) async {
+    final response = await _supabase
+        .from('user_credentials')
+        .select()
+        .eq('phone_number', phone);
+    if (response.isEmpty) return null;
+    return response.first;
+  }
+
   // Get user profile
   Future<Map<String, dynamic>?> getUserProfile(String email) async {
     final response = await _supabase

@@ -15,22 +15,25 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _identifierController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final SupabaseService _supabaseService = SupabaseService();
   bool _isPasswordVisible = false;
 
   Future<void> _login() async {
-    String email = _emailController.text.trim();
+    String identifier = _identifierController.text.trim();
     String password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter email and password')));
+    if (identifier.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter email/phone and password')));
       return;
     }
 
     try {
-      var credentials = await _supabaseService.getUserCredentials(email);
+      bool isEmail = identifier.contains('@');
+      var credentials = isEmail
+          ? await _supabaseService.getUserCredentials(identifier)
+          : await _supabaseService.getUserCredentialsByPhone(identifier);
       if (credentials == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User doesn\'t exist')));
         return;
@@ -49,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // Store current user email
-      await _supabaseService.setCurrentUserEmail(email);
+      await _supabaseService.setCurrentUserEmail(credentials['email']);
 
       if (profile['status'] == 'verified') {
         Navigator.pushReplacement(
@@ -146,13 +149,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                // Email input field
+                // Email/Phone input field
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
                   child: TextField(
-                    controller: _emailController,
+                    controller: _identifierController,
                     decoration: InputDecoration(
-                      hintText: 'Enter your email',
+                      hintText: 'Enter your email or phone number',
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
@@ -161,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
-                    keyboardType: TextInputType.emailAddress,
+                    keyboardType: TextInputType.text,
                   ),
                 ),
                 // Password input field
