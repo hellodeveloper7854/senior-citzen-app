@@ -69,5 +69,12 @@
     public static ** valueOf(java.lang.String);
 }
 
+# Flutter Secure Storage
+-keep class com.it_nomads.fluttersecurestorage.** { *; }
+
+# Cryptography/Tink
+-keep class com.google.crypto.tink.** { *; }
+-keep class org.bouncycastle.** { *; }
+
 # Keep all classes in your package
 -keep class com.example.aadharwad.** { *; }
