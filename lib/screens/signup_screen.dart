@@ -1018,10 +1018,10 @@ class SignupScreenState extends State<SignupScreen> {
         }
       }
 
-      // Navigate to under verification screen
+      // Navigate to under verification screen (after signup, hide profile icon)
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const UnderVerificationScreen()),
+        MaterialPageRoute(builder: (context) => const UnderVerificationScreen(showProfileIcon: false)),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
