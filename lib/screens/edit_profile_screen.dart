@@ -19,6 +19,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _otherMedicalController = TextEditingController();
+  final TextEditingController _emergency1NameController = TextEditingController();
+  final TextEditingController _emergency2NameController = TextEditingController();
 
   // selections
   String? _selectedMaritalStatus;
@@ -26,6 +28,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedPoliceStation;
   String? _selectedLanguage;
   String? _selectedBloodGroup;
+  String? _selectedEmergency1Relation;
+  String? _selectedEmergency2Relation;
   List<String> _selectedMedicalConditions = [];
 
   // image
@@ -40,6 +44,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final List<String> _languages = ['English', 'Hindi', 'Marathi'];
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   final List<String> _medicalConditionsList = ['Low BP', 'High BP', 'Diabetes', 'Depression', 'Heart Disease', 'Alzheimer'];
+  final List<String> _relations = ['Caretaker', 'Child', 'Cousin', 'Friend', 'Grandchild', 'Niece/Nephew', 'Sibling', 'Spouse', 'Other'];
   final List<String> _policeStations = [
     'Select Police Station',
     'KALWA POLICE STATION',
@@ -98,6 +103,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     _otherMedicalController.text = p['other_medical_conditions'] ?? '';
     _currentPhotoUrl = p['profile_photo_url'];
+    _emergency1NameController.text = p['emergency_contact_1_name'] ?? '';
+    _selectedEmergency1Relation = p['emergency_contact_1_relation'];
+    _emergency2NameController.text = p['emergency_contact_2_name'] ?? '';
+    _selectedEmergency2Relation = p['emergency_contact_2_relation'];
   }
 
   @override
@@ -105,6 +114,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _addressController.dispose();
     _pincodeController.dispose();
     _otherMedicalController.dispose();
+    _emergency1NameController.dispose();
+    _emergency2NameController.dispose();
     super.dispose();
   }
 
@@ -151,6 +162,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'medical_conditions': _selectedMedicalConditions,
         'other_medical_conditions': _otherMedicalController.text,
         'blood_group': _selectedBloodGroup,
+        'emergency_contact_1_name': _emergency1NameController.text,
+        'emergency_contact_1_relation': _selectedEmergency1Relation,
+        'emergency_contact_2_name': _emergency2NameController.text,
+        'emergency_contact_2_relation': _selectedEmergency2Relation,
       };
 
       if (photoUrl != null && photoUrl.isNotEmpty && photoUrl != _currentPhotoUrl) {
@@ -306,6 +321,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   value: _selectedBloodGroup,
                   items: _bloodGroups.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() => _selectedBloodGroup = v),
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 24),
+
+                const Text('Emergency Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+
+                const Text('Emergency Contact 1 Name', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _emergency1NameController,
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Emergency Contact 1 Relation', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedEmergency1Relation,
+                  items: _relations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => setState(() => _selectedEmergency1Relation = v),
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Emergency Contact 2 Name', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _emergency2NameController,
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Emergency Contact 2 Relation', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedEmergency2Relation,
+                  items: _relations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => setState(() => _selectedEmergency2Relation = v),
                   decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 24),

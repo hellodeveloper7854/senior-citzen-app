@@ -55,6 +55,65 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     }
   }
 
+  Future<void> _addNewContact() async {
+    final nameController = TextEditingController();
+    String? selectedRelation;
+    final phoneController = TextEditingController();
+    final relations = ['Caretaker', 'Child', 'Cousin', 'Friend', 'Grandchild', 'Niece/Nephew', 'Sibling', 'Spouse', 'Other'];
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add New Emergency Contact'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            DropdownButtonFormField<String>(
+              value: selectedRelation,
+              items: relations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (v) => selectedRelation = v,
+              decoration: const InputDecoration(labelText: 'Relation'),
+            ),
+            TextField(
+              controller: phoneController,
+              decoration: const InputDecoration(labelText: 'Phone Number'),
+              keyboardType: TextInputType.phone,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (nameController.text.isNotEmpty && selectedRelation != null && phoneController.text.isNotEmpty) {
+                final updates = {
+                  'emergency_contact_2_name': nameController.text,
+                  'emergency_contact_2_relation': selectedRelation,
+                  'emergency_contact_2_number': phoneController.text,
+                };
+                try {
+                  await _supabaseService.updateUserProfile(_userProfile!['contact_number'], updates);
+                  await _loadUserProfile();
+                  Navigator.of(ctx).pop();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,19 +188,48 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                             : Column(
                                 children: [
                                   if (_userProfile != null) ...[
-                                    _EmergencyContactButton(
-                                      name: _userProfile!['emergency_contact_1_name'] ?? '',
-                                      relation: _userProfile!['emergency_contact_1_relation'] ?? '',
-                                      phoneNumber: _userProfile!['emergency_contact_1_number'] ?? '',
-                                      onCallPressed: () => _makePhoneCall(_userProfile!['emergency_contact_1_number'] ?? ''),
-                                    ),
-                                    const SizedBox(height: 15),
-                                    _EmergencyContactButton(
-                                      name: _userProfile!['emergency_contact_2_name'] ?? '',
-                                      relation: _userProfile!['emergency_contact_2_relation'] ?? '',
-                                      phoneNumber: _userProfile!['emergency_contact_2_number'] ?? '',
-                                      onCallPressed: () => _makePhoneCall(_userProfile!['emergency_contact_2_number'] ?? ''),
-                                    ),
+                                    if (_userProfile!['emergency_contact_1_name'] != null && _userProfile!['emergency_contact_1_name'].isNotEmpty) ...[
+                                      _EmergencyContactButton(
+                                        name: _userProfile!['emergency_contact_1_name'] ?? '',
+                                        relation: _userProfile!['emergency_contact_1_relation'] ?? '',
+                                        phoneNumber: _userProfile!['emergency_contact_1_number'] ?? '',
+                                        onCallPressed: () => _makePhoneCall(_userProfile!['emergency_contact_1_number'] ?? ''),
+                                      ),
+                                      const SizedBox(height: 15),
+                                    ],
+                                    if (_userProfile!['emergency_contact_2_name'] != null && _userProfile!['emergency_contact_2_name'].isNotEmpty) ...[
+                                      _EmergencyContactButton(
+                                        name: _userProfile!['emergency_contact_2_name'] ?? '',
+                                        relation: _userProfile!['emergency_contact_2_relation'] ?? '',
+                                        phoneNumber: _userProfile!['emergency_contact_2_number'] ?? '',
+                                        onCallPressed: () => _makePhoneCall(_userProfile!['emergency_contact_2_number'] ?? ''),
+                                      ),
+                                      const SizedBox(height: 15),
+                                    ] else ...[
+                                      // Add new contact button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 50,
+                                        child: ElevatedButton(
+                                          onPressed: _addNewContact,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF12B54C),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Add New Contact',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 15),
+                                    ],
                                   ] else ...[
                                     const Center(
                                       child: Text(
@@ -232,7 +320,7 @@ class _EmergencyContactButton extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      name.isNotEmpty ? name : 'No name',
+                      name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -242,7 +330,7 @@ class _EmergencyContactButton extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      relation.isNotEmpty ? relation : 'No relation',
+                      relation,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black54,
