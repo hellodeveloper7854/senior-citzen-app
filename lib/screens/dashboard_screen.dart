@@ -117,7 +117,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
+                        icon: const Icon(Icons.account_circle, color: Colors.white),
                         onPressed: () {
                           Navigator.push(
                             context,

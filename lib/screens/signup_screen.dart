@@ -92,6 +92,11 @@ class SignupScreenState extends State<SignupScreen> {
   ];
   int _currentStep = 0;
 
+  @override
+  void initState() {
+    super.initState();
+  }
+
   void _prevStep() {
     if (_currentStep > 0) {
       setState(() {
@@ -100,7 +105,7 @@ class SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
     String? error;
     switch (_currentStep) {
       case 0: // Personal
@@ -110,6 +115,21 @@ class SignupScreenState extends State<SignupScreen> {
             _aadharController.text.isEmpty ||
             _contactNumberController.text.isEmpty) {
           error = 'Please complete personal information';
+        } else if (!_isAge65OrMore()) {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Age Requirement'),
+              content: const Text('You must be at least 65 years old to register for this service.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          return; // Do not proceed
         }
         break;
       case 1: // Emergency
@@ -762,6 +782,22 @@ class SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  int _calculateAgeFromDobText() {
+    final dobStr = _dateOfBirthController.text.trim();
+    final dob = DateTime.tryParse(dobStr);
+    if (dob == null) return -1;
+
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    final hadBirthday = (now.month > dob.month) || (now.month == dob.month && now.day >= dob.day);
+    if (!hadBirthday) age--;
+    return age;
+  }
+
+  bool _isAge65OrMore() {
+    final age = _calculateAgeFromDobText();
+    return age >= 65;
+  }
   Future<bool> _showConsentDialog() async {
     return await showDialog<bool>(
           context: context,
@@ -875,6 +911,11 @@ class SignupScreenState extends State<SignupScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      return;
+    }
+
+    if (!_isAge65OrMore()) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be at least 65 years old to register')));
       return;
     }
 
@@ -1121,7 +1162,13 @@ class SignupScreenState extends State<SignupScreen> {
                           Expanded(
                             flex: _currentStep > 0 ? 2 : 1,
                             child: ElevatedButton(
-                              onPressed: _currentStep < 4 ? _nextStep : _submitForm,
+                              onPressed: () async {
+                                if (_currentStep < 4) {
+                                  await _nextStep();
+                                } else {
+                                  await _submitForm();
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF3E0FAD),
                                 foregroundColor: Colors.white,

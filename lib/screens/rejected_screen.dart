@@ -15,7 +15,7 @@ class RejectedScreen extends StatelessWidget {
         automaticallyImplyLeading: false, // Remove back button
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.account_circle),
             onPressed: () {
               Navigator.push(
                 context,

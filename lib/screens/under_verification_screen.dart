@@ -13,7 +13,7 @@ class UnderVerificationScreen extends StatelessWidget {
         title: const Text('Under Verification'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.account_circle, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -21,7 +21,8 @@ class UnderVerificationScreen extends StatelessWidget {
               );
             },
           ),
-          TextButton(
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               final supabaseService = SupabaseService();
               await supabaseService.clearCurrentUser();
@@ -31,10 +32,6 @@ class UnderVerificationScreen extends StatelessWidget {
                 (route) => false,
               );
             },
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.white),
-            ),
           ),
         ],
       ),
