@@ -87,9 +87,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Emergency Contacts
                       const SizedBox(height: 20),
                       const Text('Emergency Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      _buildProfileField('Contact 1', _userProfile!['emergency_contact_1_name'] != null && _userProfile!['emergency_contact_1_relation'] != null ? '${_userProfile!['emergency_contact_1_name']} (${_userProfile!['emergency_contact_1_relation']})' : ''),
+                      _buildProfileField('Contact 1', _userProfile!['emergency_contact_1_name'] != null && _userProfile!['emergency_contact_1_relation'] != null ? '${_userProfile!['emergency_contact_1_name']} - ${_userProfile!['emergency_contact_1_relation']}' : ''),
                       _buildProfileField('Contact 1 Number', _userProfile!['emergency_contact_1_number']),
-                      _buildProfileField('Contact 2', _userProfile!['emergency_contact_2_name'] != null && _userProfile!['emergency_contact_2_relation'] != null ? '${_userProfile!['emergency_contact_2_name']} (${_userProfile!['emergency_contact_2_relation']})' : ''),
+                      _buildProfileField('Contact 2', _userProfile!['emergency_contact_2_name'] != null && _userProfile!['emergency_contact_2_relation'] != null ? '${_userProfile!['emergency_contact_2_name']} - ${_userProfile!['emergency_contact_2_relation']}' : ''),
                       _buildProfileField('Contact 2 Number', _userProfile!['emergency_contact_2_number']),
 
                       // Medical Information

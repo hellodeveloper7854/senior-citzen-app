@@ -16,11 +16,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
 
   // controllers
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _otherMedicalController = TextEditingController();
   final TextEditingController _emergency1NameController = TextEditingController();
+  final TextEditingController _emergency1NumberController = TextEditingController();
   final TextEditingController _emergency2NameController = TextEditingController();
+  final TextEditingController _emergency2NumberController = TextEditingController();
 
   // selections
   String? _selectedMaritalStatus;
@@ -88,13 +91,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final p = widget.initialProfile;
+    _nameController.text = p['full_name'] ?? '';
     _addressController.text = p['address'] ?? '';
     _pincodeController.text = p['pincode'] ?? '';
     _selectedMaritalStatus = p['marital_status'];
+    if (_selectedMaritalStatus != null && !_maritalStatuses.contains(_selectedMaritalStatus)) {
+      _selectedMaritalStatus = null;
+    }
     _selectedLivingWith = p['living_with'];
+    if (_selectedLivingWith != null && !_livingWithOptions.contains(_selectedLivingWith)) {
+      _selectedLivingWith = null;
+    }
     _selectedPoliceStation = p['police_station'];
+    if (_selectedPoliceStation != null && !_policeStations.contains(_selectedPoliceStation)) {
+      _selectedPoliceStation = null;
+    }
     _selectedLanguage = p['preferred_language'];
+    if (_selectedLanguage != null && !_languages.contains(_selectedLanguage)) {
+      _selectedLanguage = null;
+    }
     _selectedBloodGroup = p['blood_group'];
+    if (_selectedBloodGroup != null && !_bloodGroups.contains(_selectedBloodGroup)) {
+      _selectedBloodGroup = null;
+    }
     final mc = p['medical_conditions'];
     if (mc is List) {
       _selectedMedicalConditions = mc.map((e) => e.toString()).toList();
@@ -104,18 +123,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _otherMedicalController.text = p['other_medical_conditions'] ?? '';
     _currentPhotoUrl = p['profile_photo_url'];
     _emergency1NameController.text = p['emergency_contact_1_name'] ?? '';
+    _emergency1NumberController.text = p['emergency_contact_1_number'] ?? '';
     _selectedEmergency1Relation = p['emergency_contact_1_relation'];
+    if (_selectedEmergency1Relation != null && !_relations.contains(_selectedEmergency1Relation)) {
+      _selectedEmergency1Relation = null;
+    }
     _emergency2NameController.text = p['emergency_contact_2_name'] ?? '';
+    _emergency2NumberController.text = p['emergency_contact_2_number'] ?? '';
     _selectedEmergency2Relation = p['emergency_contact_2_relation'];
+    if (_selectedEmergency2Relation != null && !_relations.contains(_selectedEmergency2Relation)) {
+      _selectedEmergency2Relation = null;
+    }
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _addressController.dispose();
     _pincodeController.dispose();
     _otherMedicalController.dispose();
     _emergency1NameController.dispose();
+    _emergency1NumberController.dispose();
     _emergency2NameController.dispose();
+    _emergency2NumberController.dispose();
     super.dispose();
   }
 
@@ -129,7 +159,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveChanges() async {
-    if (_selectedMaritalStatus == null ||
+    if (_nameController.text.isEmpty ||
+        _selectedMaritalStatus == null ||
         _selectedLivingWith == null ||
         _selectedPoliceStation == null ||
         _addressController.text.isEmpty ||
@@ -153,6 +184,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       final updates = <String, dynamic>{
+        'full_name': _nameController.text,
         'marital_status': _selectedMaritalStatus,
         'living_with': _selectedLivingWith,
         'police_station': _selectedPoliceStation,
@@ -163,8 +195,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'other_medical_conditions': _otherMedicalController.text,
         'blood_group': _selectedBloodGroup,
         'emergency_contact_1_name': _emergency1NameController.text,
+        'emergency_contact_1_number': _emergency1NumberController.text,
         'emergency_contact_1_relation': _selectedEmergency1Relation,
         'emergency_contact_2_name': _emergency2NameController.text,
+        'emergency_contact_2_number': _emergency2NumberController.text,
         'emergency_contact_2_relation': _selectedEmergency2Relation,
       };
 
@@ -223,6 +257,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                const Text('Full Name *', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
 
                 const Text('Marital Status *', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
@@ -336,6 +378,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                const Text('Emergency Contact 1 Number', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _emergency1NumberController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
+
                 const Text('Emergency Contact 1 Relation', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
@@ -350,6 +401,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _emergency2NameController,
+                  decoration: const InputDecoration(),
+                ),
+                const SizedBox(height: 16),
+
+                const Text('Emergency Contact 2 Number', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _emergency2NumberController,
+                  keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 16),
