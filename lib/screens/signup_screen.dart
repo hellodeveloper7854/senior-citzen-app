@@ -55,11 +55,10 @@ class SignupScreenState extends State<SignupScreen> {
   final List<String> _policeStations = [
     'Select Police Station',
     'KALWA POLICE STATION',
-    'test police station',
     'MUMBRA POLICE STATION',
     'NAUPADA POLICE STATION',
     'RABODI POLICE STATION',
-    'SHILDOIGHAR POLICE STATION',
+    'SHIL DAIGHAR POLICE STATION',
     'THANENAGAR POLICE STATION',
     'BHIWANDI POLICE STATION',
     'BHOIWADA POLICE STATION',
@@ -789,7 +788,7 @@ class SignupScreenState extends State<SignupScreen> {
                           border: Border.all(color: const Color(0xFF0EA5E9), width: 1),
                         ),
                         child: const Text(
-                          'I confirm that all information provided is genuine and accurate. I understand this information will be used for safety purposes and agree to be part of the SnehaBand community.',
+                          'I confirm that all information provided is genuine and accurate. I understand this information will be used for safety purposes and agree to be part of the आधारवड community.',
                           style: TextStyle(fontSize: 16, color: Color(0xFF0F172A), height: 1.5),
                         ),
                       ),

@@ -43,11 +43,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final List<String> _policeStations = [
     'Select Police Station',
     'KALWA POLICE STATION',
-    'test police station',
     'MUMBRA POLICE STATION',
     'NAUPADA POLICE STATION',
     'RABODI POLICE STATION',
-    'SHILDOIGHAR POLICE STATION',
+    'SHIL DAIGHAR POLICE STATION',
     'THANENAGAR POLICE STATION',
     'BHIWANDI POLICE STATION',
     'BHOIWADA POLICE STATION',
