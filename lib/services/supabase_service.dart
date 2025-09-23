@@ -50,9 +50,9 @@ class SupabaseService {
     final response = await _supabase
         .from('user_credentials')
         .select()
-        .eq('email', email)
-        .single();
-    return response;
+        .eq('email', email);
+    if (response.isEmpty) return null;
+    return response.first;
   }
 
   // Get user credentials by phone
@@ -104,20 +104,33 @@ class SupabaseService {
     final response = await _supabase
         .from('registrations')
         .select()
-        .eq('contact_number', phone)
-        .single();
+        .eq('contact_number', phone);
 
-    if (response == null) return null;
+    if (response.isEmpty) return null;
+
+    final profile = response.first;
 
     // Decrypt sensitive fields (handles legacy plaintext gracefully)
-    response['aadhar_number'] =
-        await CryptoUtil.decryptString(response['aadhar_number']);
-    response['emergency_contact_1_number'] =
-        await CryptoUtil.decryptString(response['emergency_contact_1_number']);
-    response['emergency_contact_2_number'] =
-        await CryptoUtil.decryptString(response['emergency_contact_2_number']);
+    try {
+      profile['aadhar_number'] =
+          await CryptoUtil.decryptString(profile['aadhar_number']);
+    } catch (e) {
+      // If decryption fails, keep the raw value
+    }
+    try {
+      profile['emergency_contact_1_number'] =
+          await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+    } catch (e) {
+      // If decryption fails, keep the raw value
+    }
+    try {
+      profile['emergency_contact_2_number'] =
+          await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+    } catch (e) {
+      // If decryption fails, keep the raw value
+    }
 
-    return response;
+    return profile;
   }
 
   // Upload profile photo to Supabase Storage and return a public URL

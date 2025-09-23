@@ -275,6 +275,8 @@ class SignupScreenState extends State<SignupScreen> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               ),
               keyboardType: TextInputType.phone,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              maxLength: 10,
             ),
             const SizedBox(height: 20),
 
@@ -927,11 +929,28 @@ class SignupScreenState extends State<SignupScreen> {
     }
 
     try {
+      final email = _emailController.text.trim();
+      final phone = _contactNumberController.text.trim();
+
+      // Check if email already exists
+      var existingUserByEmail = await _supabaseService.getUserCredentials(email);
+      if (existingUserByEmail != null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User already exists. Please sign in with your existing details.')));
+        return;
+      }
+
+      // Check if phone number already exists
+      var existingUserByPhone = await _supabaseService.getUserCredentialsByPhone(phone);
+      if (existingUserByPhone != null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User already exists. Please sign in with your existing details.')));
+        return;
+      }
+
       // Insert user credentials
       await _supabaseService.insertUserCredentials(
-        _emailController.text,
+        email,
         _passwordController.text,
-        _contactNumberController.text,
+        phone,
       );
 
       // Optional: upload profile photo if user selected one
@@ -941,7 +960,7 @@ class SignupScreenState extends State<SignupScreen> {
           final file = File(_pickedImage!.path);
           profilePhotoUrl = await _supabaseService.uploadProfilePhoto(
             file,
-            _contactNumberController.text,
+            phone,
           );
         } catch (e) {
           // Show an informative message but allow the registration to proceed
@@ -957,7 +976,7 @@ class SignupScreenState extends State<SignupScreen> {
         'date_of_birth': _dateOfBirthController.text,
         'gender': _selectedGender,
         'aadhar_number': _aadharController.text,
-        'contact_number': _contactNumberController.text,
+        'contact_number': phone,
         'marital_status': _selectedMaritalStatus,
         'living_with': _selectedLivingWith,
         'police_station': _selectedPoliceStation,
@@ -985,10 +1004,10 @@ class SignupScreenState extends State<SignupScreen> {
           final file = File(_pickedImage!.path);
           final uploadedUrl = await _supabaseService.uploadProfilePhoto(
             file,
-            _contactNumberController.text,
+            phone,
           );
           await _supabaseService.updateProfilePhotoUrl(
-            _contactNumberController.text,
+            phone,
             uploadedUrl,
           );
         } catch (e) {

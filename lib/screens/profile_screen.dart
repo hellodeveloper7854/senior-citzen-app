@@ -29,9 +29,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (credentials != null) {
           final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
           if (profile != null) {
-            profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
-            profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
-            profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+            try {
+              profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
+            } catch (e) {
+              // Keep raw value if decryption fails
+            }
+            try {
+              profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+            } catch (e) {
+              // Keep raw value if decryption fails
+            }
+            try {
+              profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+            } catch (e) {
+              // Keep raw value if decryption fails
+            }
           }
           setState(() {
             _userProfile = profile;
