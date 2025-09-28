@@ -9,9 +9,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // await Supabase.initialize(
+  //   url: 'https://tbxihxtvocurqsygfknk.supabase.co',
+  //   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieGloeHR2b2N1cnFzeWdma25rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjE5OTMsImV4cCI6MjA3MzkzNzk5M30.cLBscTAW3UaixNphFs-MYnvoRTKg0hMPtN6gbHoezt4',
+  // );
+
   await Supabase.initialize(
-    url: 'https://tbxihxtvocurqsygfknk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieGloeHR2b2N1cnFzeWdma25rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjE5OTMsImV4cCI6MjA3MzkzNzk5M30.cLBscTAW3UaixNphFs-MYnvoRTKg0hMPtN6gbHoezt4',
+    url: 'https://alcqejmotzojjbasrjol.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsY3Flam1vdHpvampiYXNyam9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMzg3MDYsImV4cCI6MjA3NDYxNDcwNn0.9h22kaBiPksRsyGTwhPjzT5VAxYaSQ-z52r8KOJlAuY',
   );
 
   runApp(const MyApp());
