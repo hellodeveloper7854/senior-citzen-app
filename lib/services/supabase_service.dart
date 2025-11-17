@@ -30,7 +30,10 @@ class SupabaseService {
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
-    return digest.toString();
+    // return digest.toString();
+    return password;
+
+
   }
 
   // Insert user credentials
