@@ -118,3 +118,36 @@ AND conname LIKE '%unique%';
 
 -- Check storage buckets (run this in Supabase Dashboard > Storage)
 -- You should see: profile-photos, audio-recordings
+
+-- ============================================================================
+-- EMERGENCY PHONE NUMBERS TABLE
+-- ============================================================================
+
+-- Create emergency_phone_numbers table for storing emergency contact numbers
+CREATE TABLE IF NOT EXISTS emergency_phone_numbers (
+  id SERIAL PRIMARY KEY,
+  service_name VARCHAR(100) NOT NULL, -- e.g., 'Police', 'Ambulance', 'Fire Department'
+  phone_number VARCHAR(20) NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create index for faster queries
+CREATE INDEX IF NOT EXISTS idx_emergency_phone_numbers_service ON emergency_phone_numbers(service_name);
+CREATE INDEX IF NOT EXISTS idx_emergency_phone_numbers_active ON emergency_phone_numbers(is_active);
+
+
+
+-- Command to insert new emergency phone number:
+-- INSERT INTO emergency_phone_numbers (service_name, phone_number, description)
+-- VALUES ('ServiceName', 'PhoneNumber', 'Description');
+-- Example:
+-- INSERT INTO emergency_phone_numbers (service_name, phone_number, description)
+-- VALUES ('Women Helpline', '1091', 'Women Emergency Helpline');
+
+-- Verification query for emergency phone numbers table
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name = 'emergency_phone_numbers';

@@ -428,4 +428,32 @@ class SupabaseService {
 
     return List<Map<String, dynamic>>.from(response);
   }
+
+  // Get emergency phone numbers
+  Future<List<Map<String, dynamic>>> getEmergencyPhoneNumbers() async {
+    final response = await _supabase
+        .from('emergency_phone_numbers')
+        .select()
+        .eq('is_active', true)
+        .order('service_name', ascending: true);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // Get specific emergency phone number by service name
+  Future<String?> getEmergencyPhoneNumber(String serviceName) async {
+    final response = await _supabase
+        .from('emergency_phone_numbers')
+        .select('phone_number')
+        .eq('service_name', serviceName)
+        .eq('is_active', true)
+        .single();
+
+    return response['phone_number'] as String?;
+  }
+
+  // Get police emergency number (default service for SOS)
+  Future<String?> getPoliceEmergencyNumber() async {
+    return await getEmergencyPhoneNumber('Police');
+  }
 }

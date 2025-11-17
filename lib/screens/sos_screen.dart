@@ -25,6 +25,8 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   String? _profilePhotoUrl;
   bool _isProcessing = true; // Show loading state
   String _statusMessage = 'Initializing emergency response...';
+  String _emergencyPhoneNumber = '022-25445353'; // Default fallback number
+  static const String _emergencyServiceName = 'Police'; // Service name to fetch from database
   
   // Animation for the "Calling...." dots
   late AnimationController _dotController;
@@ -44,7 +46,9 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     super.initState();
     // Start with immediate actions first
     _updateStatus('Connecting to emergency services...');
-    _makePhoneCall(); // Immediate - most critical
+    _loadEmergencyPhoneNumber(_emergencyServiceName).then((_) {
+      _makePhoneCall(); // Call after getting phone number
+    });
     _startCallingAnimation(); // UI feedback
     _initializeNotifications(); // Background
 
@@ -433,9 +437,24 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       return;
     }
 
-    // Police emergency number: 022-25445353
-    await PermissionUtils.launchPhoneCall('02225445353', context);
+    // Use emergency phone number from database
+    await PermissionUtils.launchPhoneCall(_emergencyPhoneNumber.replaceAll('-', ''), context);
 
+  }
+
+  // Load emergency phone number from database based on service name
+  Future<void> _loadEmergencyPhoneNumber(String serviceName) async {
+    try {
+      final phoneNumber = await _supabaseService.getEmergencyPhoneNumber(serviceName);
+      if (phoneNumber != null && mounted) {
+        setState(() {
+          _emergencyPhoneNumber = phoneNumber;
+        });
+      }
+    } catch (e) {
+      // Keep default number if there's an error
+      print('Error loading emergency phone number for $serviceName: $e');
+    }
   }
 
   // --- UI Components ---
@@ -658,10 +677,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                         textAlign: TextAlign.center,
                       ),
 
-                      // Displaying the original phone number (optional, for debugging/info)
+                      // Displaying the emergency phone number from database
                       SizedBox(height: screenHeight * 0.005),
                        Text(
-                        '022-25445353',
+                        _emergencyPhoneNumber,
                         style: TextStyle(
                           color: Colors.black54,
                           fontSize: screenWidth * 0.035,
