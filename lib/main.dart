@@ -98,7 +98,7 @@ class _MyAppState extends State<MyApp> {
           onError: Colors.white,
           brightness: Brightness.light,
         ),
-        useMaterial3: true,
+        useMaterial3: false,
         fontFamily: 'Roboto',
         textTheme: const TextTheme(
           displayLarge: TextStyle(
@@ -162,10 +162,10 @@ class _MyAppState extends State<MyApp> {
             color: Color(0xFF6B7280),
           ),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: CardTheme(
           elevation: 4,
-          shadowColor: Color(0x1A000000),
-          shape: RoundedRectangleBorder(
+          shadowColor: Colors.black.withOpacity(0.1),
+          shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(16)),
           ),
         ),

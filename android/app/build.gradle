@@ -26,10 +26,11 @@ android {
     compileSdk 36
 
     defaultConfig {
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 23
         targetSdkVersion flutter.targetSdkVersion
         versionCode 2
         versionName "1.1.0"
+        multiDexEnabled true
     }
 
     compileOptions {
@@ -97,4 +98,5 @@ flutter {
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+    implementation 'androidx.multidex:multidex:2.0.1'
 }
