@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
 
 class NationalHelplineScreen extends StatelessWidget {
   const NationalHelplineScreen({super.key});
@@ -12,6 +13,19 @@ class NationalHelplineScreen extends StatelessWidget {
     {"title": "National Helpline", "number": "14567"},
   ];
 
+  // Function to initiate a phone call
+  Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      // Show an error message if the dialer can't be opened
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open dialer for $phoneNumber')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,26 +34,28 @@ class NationalHelplineScreen extends StatelessWidget {
         children: [
           // Circle Decorations
           Positioned(
-            top: -60,
-            left: -60,
+            top: -50,
+            left: -10,
             child: Container(
-              width: 140,
-              height: 140,
-              decoration: const BoxDecoration(
-                color: Color(0xFF6366F1),
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                // Using a non-hex color literal here, replacing with a standard Flutter color expression
+                color: const Color(0xff000BAA).withOpacity(0.45),
               ),
             ),
           ),
           Positioned(
-            top: -30,
-            left: 60,
+            top: 10,
+            left: -80,
             child: Container(
-              width: 100,
-              height: 100,
+              width: 200,
+              height: 200,
               decoration: BoxDecoration(
-                color: const Color.fromRGBO(99, 102, 241, 0.6),
                 shape: BoxShape.circle,
+                // Using a non-hex color literal here, replacing with a standard Flutter color expression
+                color: const Color(0xff000DFF).withOpacity(0.49),
               ),
             ),
           ),
@@ -50,6 +66,7 @@ class NationalHelplineScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 120),
                   const Text(
                     "National Helpline",
                     style: TextStyle(
@@ -59,8 +76,9 @@ class NationalHelplineScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Correcting the subtitle to reflect the call functionality, not SMS
                   const Text(
-                    "Your safety is our mission.\nWho do you want to SMS.",
+                    "Tap any contact to initiate a call directly.",
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black54,
@@ -74,62 +92,70 @@ class NationalHelplineScreen extends StatelessWidget {
                   Expanded(
                     child: ListView.separated(
                       itemCount: helplines.length,
-                      physics: const NeverScrollableScrollPhysics(),
+                      // Removed NeverScrollableScrollPhysics if you want it to scroll,
+                      // but keeping it for the fixed layout if all fit.
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final item = helplines[index];
-                        return Container(
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 184, 238, 161),
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Left side text
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item["title"]!,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                        color: Colors.black87,
+
+                        // Wrap the container in InkWell to make it tappable and show ripple effect
+                        return InkWell(
+                          onTap: () => _makePhoneCall(context, item["number"]!),
+                          borderRadius: BorderRadius.circular(25),
+                          child: Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              // Using a standard Flutter color expression instead of non-hex literal
+                              color: const Color(0xff24ff00).withOpacity(.25),
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Left side text
+                                Padding(
+                                  padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item["title"]!,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                          color: Colors.black87,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      item["number"]!,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 13,
-                                        color: Colors.black54,
+                                      Text(
+                                        item["number"]!,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 13,
+                                          color: Colors.black54,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              // WhatsApp icon container
-                              Container(
-                                width: 44,
-                                height: 44,
-                                margin: const EdgeInsets.only(right: 10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF25D366), // WhatsApp green
-                                  borderRadius: BorderRadius.circular(22),
+                                // Phone/Call icon container (Changed from WhatsApp to Phone/Emergency for helplines)
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  margin: const EdgeInsets.only(right: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3E0FAD), // Using a distinct color for call
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  child: const Icon(
+                                    Icons.call, // Changed icon to represent call/dialer
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.contact_emergency,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },

@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/supabase_service.dart';
+import '../utils/permission_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> initialProfile;
@@ -34,6 +36,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _selectedEmergency1Relation;
   String? _selectedEmergency2Relation;
   List<String> _selectedMedicalConditions = [];
+  bool _isPhysicallyDisabled = false;
+  final TextEditingController _disabilityTypeController = TextEditingController();
 
   // image
   XFile? _pickedImage;
@@ -134,6 +138,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_selectedEmergency2Relation != null && !_relations.contains(_selectedEmergency2Relation)) {
       _selectedEmergency2Relation = null;
     }
+    _isPhysicallyDisabled = p['is_physically_disabled'] ?? false;
+    _disabilityTypeController.text = p['disability_type'] ?? '';
   }
 
   @override
@@ -146,10 +152,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emergency1NumberController.dispose();
     _emergency2NameController.dispose();
     _emergency2NumberController.dispose();
+    _disabilityTypeController.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
+    // Request storage permission before accessing gallery
+    final hasPermission = await PermissionUtils.requestStoragePermission(context);
+
+    if (!hasPermission) {
+      return; // Permission denied, don't show toast
+    }
+
     final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (image != null) {
       setState(() {
@@ -200,6 +214,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'emergency_contact_2_name': _emergency2NameController.text,
         'emergency_contact_2_number': _emergency2NumberController.text,
         'emergency_contact_2_relation': _selectedEmergency2Relation,
+        'is_physically_disabled': _isPhysicallyDisabled,
+        'disability_type': _isPhysicallyDisabled ? _disabilityTypeController.text : null,
       };
 
       if (photoUrl != null && photoUrl.isNotEmpty && photoUrl != _currentPhotoUrl) {
@@ -226,11 +242,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-      ),
+      backgroundColor: const Color(0xFFF7F7FA),
       body: Stack(
         children: [
+          // Circular decorations same style as main screen
+          Positioned(
+            top: -50,
+            left: -10,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xff000BAA).withOpacity(0.45),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            left: -80,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xff000DFF).withOpacity(0.49),
+              ),
+            ),
+          ),
+
           SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -239,6 +279,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Center(
                   child: Column(
                     children: [
+                       
+                       SizedBox(height: 100),
+
+                      const Text(
+                        'Edit Profile',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                      ),
+                      SizedBox(height: 60),
                       CircleAvatar(
                         radius: 60,
                         backgroundImage: _pickedImage != null
@@ -250,39 +298,100 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: _pickImage,
-                        icon: const Icon(Icons.photo),
-                        label: const Text('Change Photo'),
+                        icon: const Icon(Icons.photo, color: Color(0xFF3E0FAD)),
+                        label: const Text(
+                          'Change Photo',
+                          style: TextStyle(color: Color(0xFF3E0FAD)),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                const Text('Full Name *', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Full Name *', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(),
+                  style: const TextStyle(fontSize: 18),
+                  decoration: InputDecoration(
+                    fillColor: Colors.white,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Marital Status *', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Marital Status *', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: _selectedMaritalStatus,
-                  items: _maritalStatuses.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF111827)),
+                  decoration: InputDecoration(
+                    fillColor: Colors.white,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                    ),
+                  ),
+                  items: _maritalStatuses.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 18)))).toList(),
                   onChanged: (v) => setState(() => _selectedMaritalStatus = v),
-                  decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Living Situation *', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Living Situation *', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: _selectedLivingWith,
-                  items: _livingWithOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF111827)),
+                  decoration: InputDecoration(
+                    fillColor: Colors.white,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                    ),
+                  ),
+                  items: _livingWithOptions.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 18)))).toList(),
                   onChanged: (v) => setState(() => _selectedLivingWith = v),
-                  decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 16),
 
@@ -297,12 +406,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                const Text('Address *', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Address *', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _addressController,
                   maxLines: 3,
-                  decoration: const InputDecoration(),
+                  style: const TextStyle(fontSize: 18),
+                  decoration: InputDecoration(
+                    fillColor: Colors.white,
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -325,7 +451,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                const Text('Medical Conditions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Medical Conditions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                 const SizedBox(height: 8),
                 Column(
                   children: _medicalConditionsList.map((cond) {
@@ -365,9 +491,67 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   onChanged: (v) => setState(() => _selectedBloodGroup = v),
                   decoration: const InputDecoration(),
                 ),
+                const SizedBox(height: 16),
+
+                const Text('Physical Disability', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Are you physically disabled?',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+                          ),
+                          const Spacer(),
+                          Switch(
+                            value: _isPhysicallyDisabled,
+                            onChanged: (value) => setState(() => _isPhysicallyDisabled = value),
+                            activeColor: const Color(0xFF3E0FAD),
+                            activeTrackColor: const Color(0xFF3E0FAD).withOpacity(0.3),
+                          ),
+                        ],
+                      ),
+                      if (_isPhysicallyDisabled) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Type of Disability',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _disabilityTypeController,
+                          style: const TextStyle(fontSize: 16),
+                          decoration: const InputDecoration(
+                            labelText: 'Describe your disability (e.g., mobility impairment, visual impairment)',
+                            labelStyle: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            hintText: 'Please provide details to help us serve you better',
+                            hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                          ),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 24),
 
-                const Text('Emergency Contacts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Emergency Contacts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
                 const SizedBox(height: 16),
 
                 const Text('Emergency Contact 1 Name', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -383,6 +567,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 TextField(
                   controller: _emergency1NumberController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  maxLength: 10,
                   decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 16),
@@ -410,6 +599,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 TextField(
                   controller: _emergency2NumberController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  maxLength: 10,
                   decoration: const InputDecoration(),
                 ),
                 const SizedBox(height: 16),
@@ -426,9 +620,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                 SizedBox(
                   width: double.infinity,
+                  height: 56,
                   child: ElevatedButton(
                     onPressed: _saving ? null : _saveChanges,
-                    child: const Text('Save Changes'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _saving ? Colors.grey : Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
               ],

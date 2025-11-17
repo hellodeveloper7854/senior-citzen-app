@@ -1,6 +1,9 @@
 import 'dart:ui' as ui show PathMetric;
 
+import 'package:flutter/gestures.dart' show TapGestureRecognizer;
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import 'signup_screen.dart';
 import 'dashboard_screen.dart';
 import 'under_verification_screen.dart';
@@ -23,6 +26,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   bool _isPasswordVisible = false;
 
+  // Hash password using SHA-256 (same method as in SupabaseService)
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<void> _login() async {
     String identifier = _identifierController.text.trim();
     String password = _passwordController.text;
@@ -42,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (credentials['password'] != password) {
+      if (credentials['password'] != _hashPassword(password)) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please use correct password')));
         return;
       }
@@ -155,83 +165,145 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      body: SafeArea(
-        child: Stack(
+      backgroundColor: Color(0xfff6f6f6),
+      body: SingleChildScrollView(
+         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Main content
-            SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 24),
+            SizedBox(
+          width: double.infinity,
+          height: screenHeight * 0.25,
+          child: Stack(
+          children: [
+          // Decorative circles - responsive
+          Positioned(
+          top: -screenHeight * 0.06,
+            left: -screenWidth * 0.03,
+            child: Container(
+              width: screenWidth * 0.5,
+              height: screenWidth * 0.5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xff000BAA).withOpacity(0.45),
+              ),
+            ),
+          ),
+          Positioned(
+            top: screenHeight * 0.01,
+            left: -screenWidth * 0.2,
+            child: Container(
+              width: screenWidth * 0.5,
+              height: screenWidth * 0.5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xff000DFF).withOpacity(0.49),
+              ),
+            ),
+          ),
+                  ]),
+        ),
+            SizedBox(height: screenHeight * 0.01),
+            Text(
+              'Welcome!',
+              style: TextStyle(
+                fontSize: screenWidth * 0.06,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            // Header with logo and title
+            Container(
+              padding: EdgeInsets.all(screenWidth * 0.06),
+              margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+              ),
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 90),
-                const Text(
-                  'Welcome!',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // App logo inside dashed border
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: DashedBorder(
-                    color: Color(0xFFD1D5DB),
-                    strokeWidth: 1,
-                    dashWidth: 6,
-                    dashGap: 4,
-                    radius: 12,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Image.asset(
-                        'assets/Senior Citizen.png',
-                        height: 160,
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                      ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo - responsive
+                  Center(
+                    child: Image.asset(
+                      'assets/Senior Citizen.png',
+                      fit: BoxFit.cover,
+                      height: screenHeight * 0.2,
                     ),
                   ),
-                ),
-                const SizedBox(height: 30),
-                // Email/Phone input field
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
-                  child: TextField(
+
+
+                ],
+              ),
+            ),
+            SizedBox(height: screenHeight * 0.04),
+            // Login Form
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Email/Phone input field
+                  SizedBox(height: screenHeight * 0.01),
+                  TextField(
                     controller: _identifierController,
+                    style: TextStyle(fontSize: screenWidth * 0.04),
                     decoration: InputDecoration(
-                      hintText: 'Enter your email or phone number',
+                      hintText: 'Enter your email',
+                      hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
                       filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                      fillColor: const Color(0xFFF9FAFB),
+                      contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                       ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                      ),
+
                     ),
                     keyboardType: TextInputType.text,
                   ),
-                ),
-                // Password input field
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 5),
-                  child: TextField(
+                  SizedBox(height: screenHeight * 0.025),
+                  // Password input field
+                  TextField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
+                    style: TextStyle(fontSize: screenWidth * 0.04),
                     decoration: InputDecoration(
-                      hintText: 'Enter password',
+                      hintText: 'Enter your password',
+                      hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
                       filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                      fillColor: const Color(0xFFF9FAFB),
+                      contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                        borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          color: Color(0xFF9CA3AF),
+                          size: screenWidth * 0.06,
                         ),
                         onPressed: () {
                           setState(() {
@@ -241,69 +313,92 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                ),
-                // Forgot Password Text Button
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Center(
+                  // Forgot Password
+                  Align(
+                    alignment: Alignment.center,
                     child: TextButton(
                       onPressed: _showForgotPasswordDialog,
-                      child: const Text(
-                        'Forgot Password',
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                      ),
+                      child: Text(
+                        'Forgot Password?',
                         style: TextStyle(
-                          color: Colors.indigo,
-                          fontSize: 14,
+                          color: Color(0xFF3E0FAD),
+                          fontSize: screenWidth * 0.04,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
-                ),
-                // Sign In Button
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: _login,
-                    child: const Text(
-                      'Sign In',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                  SizedBox(height: screenHeight * 0.03),
+
+                  // Sign In Button
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: screenHeight * 0.06,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(1),
+                          ),
+                          elevation: 2,
+                          shadowColor: const Color(0xFF3E0FAD).withOpacity(0.3),
+                        ),
+                        child: Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                // Sign Up text with navigation
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                ],
+              ),
+            ),
+
+            SizedBox(height: screenHeight * 0.03),
+
+            // Sign Up section
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+              child: RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  text: "Don’t have an account? ",
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    color: Color(0xFF64748B),
+                  ),
                   children: [
-                    const Text("Don't have an account ? "),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignupScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'Start Enrollment',
-                        style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.w600),
+                    TextSpan(
+                      text: "Start Enrollment",
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.04,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3E0FAD),
                       ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SignupScreen(),
+                            ),
+                          );
+                        },
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
           ],
         ),
       ),

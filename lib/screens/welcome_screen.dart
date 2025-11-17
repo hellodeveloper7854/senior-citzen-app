@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 
@@ -13,159 +14,175 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void initState() {
     super.initState();
     // Navigate to auth choice screen after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    });
+    // Future.delayed(const Duration(seconds: 3), () {
+    //   Navigator.pushReplacement(
+    //     context,
+    //     MaterialPageRoute(builder: (context) => const LoginScreen()),
+    //   );
+    // });
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      body: Stack(
-        children: [
-          // Status bar with time and battery
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: MediaQuery.of(context).padding.top + 50,
-              color: Colors.transparent,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 10,
-                  left: 20,
-                  right: 20,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      '9:45',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                   
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Main content
-          Column(
+      backgroundColor: Color(0xfff6f6f6),
+      body: Container(
+        child: SizedBox(
+          child: Column(
             children: [
-              // Top section (reduced height so bottom text shows)
-              Expanded(
-                flex: 4, // 🔹 Reduced from 5 to 4
-                child: Stack(
-                  children: [
-                    // Blue circles
-                    Positioned(
-                      top: -80,
-                      left: -40,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0x7D000DFF),
-                        ),
+              // Top section with logo and decorative elements
+
+              Stack(
+                children: [
+                  // Decorative circles - responsive sizing
+                  Positioned(
+                    top: -screenHeight * 0.06,
+                    left: -screenWidth * 0.03,
+                    child: Container(
+                      width: screenWidth * 0.5,
+                      height: screenWidth * 0.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xff000BAA).withOpacity(0.45),
                       ),
                     ),
-                    Positioned(
-                      top: -40,
-                      left: 40,
-                      child: Container(
-                        width: 130,
-                        height: 130,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0x7D000DFF),
-                        ),
-                      ),
-                    ),
-                     // Main illustration
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/Senior Citizen.png',
-                        width: 200,
-                        height: 200,
-                        fit: BoxFit.contain,
-                      ),
-                      // const SizedBox(height: 12),
-                      // const Text(
-                      //   'आधारवड',
-                      //   style: TextStyle(
-                      //     fontSize: 36,
-                      //     fontWeight: FontWeight.w800,
-                      //     color: Color(0xFFCC5A0B),
-                      //     letterSpacing: 1.0,
-                      //   ),
-                      // ),
-                    ],
                   ),
-                ),
-              ),
-              
-                    
-                  ],
-                ),
-              ),
-              
-             
-              // Bottom section with text + button
-              Expanded(
-                flex: 3,
-                child: SafeArea(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                  Positioned(
+                    top: screenHeight * 0.01,
+                    left: -screenWidth * 0.2,
+                    child: Container(
+                      width: screenWidth * 0.5,
+                      height: screenWidth * 0.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xff000DFF).withOpacity(0.49),
+                      ),
+                    ),
+                  ),
+                  // Main content
+                  Center(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 10),
-                        const Text(
+                        SizedBox(
+                          height: screenHeight * 0.25,
+                        ),
+                        // Logo - responsive height
+                        Image.asset(
+                          'assets/Senior Citizen.png',
+                          fit: BoxFit.cover,
+                          height: screenHeight * 0.2,
+                        ),
+
+                        // App name
+
+                        SizedBox(height: screenHeight * 0.04),
+                        Text(
                           'Your Safety, Our Priority',
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1F2937),
+                            fontSize: screenWidth * 0.055,
+                            color: Colors.black.withOpacity(0.74),
+                            fontWeight: FontWeight.w500,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          "Our Senior Citizen's safety app empowers you with one-tap SOS alerts, live location tracking, and a volunteer network ready to help in any emergency. Stay connected, stay safe, and get the support you need, whenever you need it.",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF6B7280),
-                            height: 1.5,
+                        SizedBox(height: screenHeight * 0.035),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.2),
+                          child: Text(
+                            "Our Senior Citizen's safety app empowers you with one-tap SOS alerts, live location tracking, and a volunteer network ready to help in any emergency. Stay connected, stay safe, and get the support you need, whenever you need it.",
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.04,
+                              color: Colors.black.withOpacity(0.74),
+                              height: 1.6,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 30),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                            height:
-                                MediaQuery.of(context).padding.bottom + 20),
+                        SizedBox(height: screenHeight * 0.035),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                          child: SizedBox(
+                            width: screenWidth,
+                            height: screenHeight * 0.06,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const LoginScreen()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                                elevation: 4,
+                                shadowColor:
+                                    const Color(0xFF3E0FAD).withOpacity(0.3),
+                              ),
+                              child: Text(
+                                'Get Started',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.045,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
                       ],
                     ),
                   ),
-                ),
+                ],
               ),
+
+              // Bottom section with text and button
+              // Expanded(
+              //   flex: 2,
+              //   child: Container(
+              //     padding: const EdgeInsets.symmetric(horizontal: 32),
+              //     child: Column(
+              //       mainAxisAlignment: MainAxisAlignment.center,
+              //       children: [
+              //         const Text(
+              //           'Your Safety, Our Priority',
+              //           style: TextStyle(
+              //             fontSize: 28,
+              //             fontWeight: FontWeight.bold,
+              //             color: Color(0xFF1F2937),
+              //           ),
+              //           textAlign: TextAlign.center,
+              //         ),
+              //         const SizedBox(height: 16),
+              //         Text(
+              //           "Empowering senior citizens with instant SOS alerts, live location tracking, and a trusted volunteer network for emergency support.",
+              //           style: TextStyle(
+              //             fontSize: 16,
+              //             color: Color(0xFF6B7280),
+              //             height: 1.6,
+              //           ),
+              //           textAlign: TextAlign.center,
+              //         ),
+              //         const SizedBox(height: 40),
+              //         // Get Started Button
+              //         SizedBox(
+              //           width: double.infinity,
+              //           height: 56,
+              //           child: ,
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/supabase_service.dart';
+import '../utils/permission_utils.dart';
 import 'under_verification_screen.dart';
 import 'login_screen.dart';
+import 'package:flutter/gestures.dart';
+
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -14,12 +17,16 @@ class SignupScreen extends StatefulWidget {
 }
 
 class SignupScreenState extends State<SignupScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   // Controllers for all fields
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _dateOfBirthController = TextEditingController();
   String? _selectedGender;
   final TextEditingController _aadharController = TextEditingController();
   final TextEditingController _contactNumberController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   String? _selectedMaritalStatus;
   String? _selectedLivingWith;
   String? _selectedPoliceStation;
@@ -35,6 +42,8 @@ class SignupScreenState extends State<SignupScreen> {
   List<String> _selectedMedicalConditions = [];
   final TextEditingController _otherMedicalController = TextEditingController();
   String? _selectedBloodGroup;
+  bool _isPhysicallyDisabled = false;
+  final TextEditingController _disabilityTypeController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -95,6 +104,12 @@ class SignupScreenState extends State<SignupScreen> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _prevStep() {
@@ -164,10 +179,25 @@ class SignupScreenState extends State<SignupScreen> {
       setState(() {
         _currentStep++;
       });
+      // Scroll to top when moving to next step
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
     }
   }
 
   Future<void> _pickImage() async {
+    // Request storage permission before accessing gallery
+    final hasPermission = await PermissionUtils.requestStoragePermission(context);
+
+    if (!hasPermission) {
+      return; // Permission denied, don't show toast
+    }
+
     final XFile? image = await _imagePicker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
@@ -260,6 +290,11 @@ class SignupScreenState extends State<SignupScreen> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(12),
+              ],
+              maxLength: 12,
             ),
             const SizedBox(height: 20),
             
@@ -275,7 +310,10 @@ class SignupScreenState extends State<SignupScreen> {
                 contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               ),
               keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
               maxLength: 10,
             ),
             const SizedBox(height: 20),
@@ -394,6 +432,11 @@ class SignupScreenState extends State<SignupScreen> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                     ),
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    maxLength: 10,
                   ),
                 ],
               ),
@@ -466,6 +509,11 @@ class SignupScreenState extends State<SignupScreen> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                     ),
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    maxLength: 10,
                   ),
                 ],
               ),
@@ -565,6 +613,65 @@ class SignupScreenState extends State<SignupScreen> {
                 child: Text(bg, style: const TextStyle(fontSize: 18))
               )).toList(),
               onChanged: (value) => setState(() => _selectedBloodGroup = value),
+            ),
+            const SizedBox(height: 20),
+
+            const Text('Physical Disability',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Are you physically disabled?',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+                      ),
+                      const Spacer(),
+                      Switch(
+                        value: _isPhysicallyDisabled,
+                        onChanged: (value) => setState(() => _isPhysicallyDisabled = value),
+                        activeColor: const Color(0xFF3E0FAD),
+                        activeTrackColor: const Color(0xFF3E0FAD).withOpacity(0.3),
+                      ),
+                    ],
+                  ),
+                  if (_isPhysicallyDisabled) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Type of Disability',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _disabilityTypeController,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: const InputDecoration(
+                        labelText: 'Describe your disability (e.g., mobility impairment, visual impairment)',
+                        labelStyle: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        hintText: 'Please provide details to help us serve you better',
+                        hintStyle: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         );
@@ -736,14 +843,25 @@ class SignupScreenState extends State<SignupScreen> {
             TextField(
               controller: _passwordController,
               style: const TextStyle(fontSize: 18),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Create a strong password',
-                labelStyle: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                labelStyle: const TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 helperText: 'At least 6 characters',
-                helperStyle: TextStyle(fontSize: 16, color: Color(0xFF059669)),
+                helperStyle: const TextStyle(fontSize: 16, color: Color(0xFF059669)),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                ),
               ),
-              obscureText: true,
+              obscureText: !_isPasswordVisible,
             ),
             const SizedBox(height: 20),
             
@@ -753,14 +871,25 @@ class SignupScreenState extends State<SignupScreen> {
             TextField(
               controller: _confirmPasswordController,
               style: const TextStyle(fontSize: 18),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Enter password again',
-                labelStyle: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                labelStyle: const TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 helperText: 'Must match the password above',
-                helperStyle: TextStyle(fontSize: 16, color: Color(0xFF059669)),
+                helperStyle: const TextStyle(fontSize: 16, color: Color(0xFF059669)),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                    });
+                  },
+                ),
               ),
-              obscureText: true,
+              obscureText: !_isConfirmPasswordVisible,
             ),
           ],
         );
@@ -826,7 +955,7 @@ class SignupScreenState extends State<SignupScreen> {
                           border: Border.all(color: const Color(0xFF0EA5E9), width: 1),
                         ),
                         child: const Text(
-                          'I confirm that all information provided is genuine and accurate. I understand this information will be used for safety purposes and agree to be part of the आधारवड community.',
+                          'I confirm that all information provided is genuine and accurate. I understand this information will be used for safety purposes and agree to be part of the आधारवड ठाणे पोलीस community.',
                           style: TextStyle(fontSize: 16, color: Color(0xFF0F172A), height: 1.5),
                         ),
                       ),
@@ -935,14 +1064,16 @@ class SignupScreenState extends State<SignupScreen> {
       // Check if email already exists
       var existingUserByEmail = await _supabaseService.getUserCredentials(email);
       if (existingUserByEmail != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User already exists. Please sign in with your existing details.')));
+                print(" phone number laready exist");
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email already Exists!')));
         return;
       }
 
       // Check if phone number already exists
       var existingUserByPhone = await _supabaseService.getUserCredentialsByPhone(phone);
       if (existingUserByPhone != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User already exists. Please sign in with your existing details.')));
+        print(" phone number laready exist");
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number already Exists!')));
         return;
       }
 
@@ -992,6 +1123,8 @@ class SignupScreenState extends State<SignupScreen> {
         'medical_conditions': _selectedMedicalConditions,
         'other_medical_conditions': _otherMedicalController.text,
         'blood_group': _selectedBloodGroup,
+        'is_physically_disabled': _isPhysicallyDisabled,
+        'disability_type': _isPhysicallyDisabled ? _disabilityTypeController.text : null,
         'profile_photo_url': profilePhotoUrl,
       };
 
@@ -1054,6 +1187,7 @@ class SignupScreenState extends State<SignupScreen> {
             ),
           ),
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.only(bottom: 32),
             child: Column(
               children: [
@@ -1203,47 +1337,32 @@ class SignupScreenState extends State<SignupScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
 
                       // Sign-in prompt
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "Already have an account?",
-                              style: TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              ),
-                              child: const Text(
-                                'Sign In Here',
-                                style: TextStyle(
-                                  color: Color(0xFF3E0FAD),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                   RichText(
+    textAlign: TextAlign.center,
+    text: TextSpan(
+      style: const TextStyle(fontSize: 16, color: Color(0xFF6B7280)),
+      children: [
+        const TextSpan(text: "Already have an account? "),
+        TextSpan(
+          text: "Sign In Here",
+          style: const TextStyle(
+            color: Color(0xFF3E0FAD),
+            fontWeight: FontWeight.w700,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+        ),
+      ],
+    ),
+  ),
                     ],
                   ),
                 ),

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../services/supabase_service.dart';
+import '../utils/crypto_util.dart';
+import '../utils/permission_utils.dart';
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -8,115 +14,696 @@ class SosScreen extends StatefulWidget {
   _SosScreenState createState() => _SosScreenState();
 }
 
-class _SosScreenState extends State<SosScreen> {
+class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMixin {
+  final SupabaseService _supabaseService = SupabaseService();
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  String _currentLocation = 'Getting location...';
+  String _locationAddress = '';
+  bool _locationLoaded = false;
+  List<Map<String, dynamic>> _emergencyContacts = [];
+  String? _profilePhotoUrl;
+  bool _isProcessing = true; // Show loading state
+  String _statusMessage = 'Initializing emergency response...';
+  
+  // Animation for the "Calling...." dots
+  late AnimationController _dotController;
+  late Animation<int> _dotAnimation;
+
+  // Map related variables
+  GoogleMapController? _mapController;
+  Position? _currentPosition;
+  Set<Marker> _markers = {};
+  final LatLng _defaultLocation = const LatLng(19.0760, 72.8777); // Mumbai coordinates as default
+  
+  final String _defaultUserAvatarPath = 'assets/Ellipse.png'; 
+  final String _logoAssetPath = 'assets/Senior Citizen.png'; 
+
   @override
   void initState() {
     super.initState();
-    _makePhoneCall();
+    // Start with immediate actions first
+    _updateStatus('Connecting to emergency services...');
+    _makePhoneCall(); // Immediate - most critical
+    _startCallingAnimation(); // UI feedback
+    _initializeNotifications(); // Background
+
+    // Load data in parallel but non-blocking
+    _loadEmergencyContactsAndProfile();
+    _getCurrentLocation();
   }
 
-  Future<void> _makePhoneCall() async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: '02225445353');
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri);
-    } else {
-      // Handle error - could show a snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch phone dialer')),
-      );
+  void _updateStatus(String message) {
+    if (mounted) {
+      setState(() {
+        _statusMessage = message;
+        _isProcessing = true;
+      });
     }
+  }
+  
+  // --- Initialization and Cleanup ---
+  void _startCallingAnimation() {
+    _dotController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat();
+    _dotAnimation = IntTween(begin: 0, end: 3).animate(_dotController);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[850], // Dark background color similar to image
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 30),
-            // Overlapping CircleAvatars for Police and User
-            Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-      ),
-      child: const CircleAvatar(
-        radius: 40,
-        backgroundImage: NetworkImage(
-          'https://via.placeholder.com/100x100?text=Police',
-        ),
-      ),
-    ),
-    // Replace SizedBox with a Transform to shift the second avatar left, creating an overlap
-    Transform.translate(
-      offset: const Offset(-15, 0), // Move left by 15 pixels
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 3),
-        ),
-        child: const CircleAvatar(
-          radius: 40,
-          backgroundImage: NetworkImage(
-            'https://via.placeholder.com/100x100?text=User',
-          ),
-        ),
-      ),
-    ),
-  ],
-),
-            const SizedBox(height: 10),
-            // Text "Calling....Police"
-            const Text(
-              'Calling....Police',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+  void dispose() {
+    _dotController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  // --- Utility/Service Functions (Retained) ---
+
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // Check location services first (fast operation)
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _currentLocation = 'Location services disabled - please enable GPS');
+        _showLocationSettingsDialog();
+        return;
+      }
+
+      // Request permission (fast if already granted)
+      final hasPermission = await PermissionUtils.requestLocationPermission(context);
+      if (!hasPermission) {
+        if (mounted) setState(() => _currentLocation = 'Location permission denied - tap to retry');
+        return;
+      }
+
+      // Try to get last known position first (much faster)
+      Position? lastPosition = await Geolocator.getLastKnownPosition();
+      if (lastPosition != null) {
+        await _handleLocationSuccess(lastPosition);
+        // Continue getting fresh position in background
+        _getFreshLocation();
+        return;
+      }
+
+      // Get fresh position with shorter timeout
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium, // Changed from high to medium for speed
+        timeLimit: const Duration(seconds: 8), // Reduced from 15 to 8 seconds
+      );
+
+      await _handleLocationSuccess(position);
+    } catch (e) {
+      if (mounted) setState(() => _currentLocation = 'Unable to get location: ${e.toString().split(':').first}');
+      _updateMapWithDefaultLocation();
+    }
+  }
+
+  // Separate method for getting fresh location in background
+  Future<void> _getFreshLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+      // Update with fresh location if we got it
+      await _handleLocationSuccess(position);
+    } catch (e) {
+      // Silently fail - we already have a location
+    }
+  }
+
+  void _showLocationSettingsDialog() {
+     // ... (Dialog implementation) ...
+     showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Enable Location Services'),
+          content: const Text('Location services are disabled. Please enable GPS/location services to use emergency features.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 20),
-            // Map image placeholder (use NetworkImage of the map shown or replace with your map widget)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    'https://i.imgur.com/FakeMapImage.png', // Replace with actual map image URL or your map widget
-                    fit: BoxFit.cover,
-                    width: double.infinity,
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.openLocationSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPermissionDialog() {
+     // ... (Dialog implementation) ...
+     showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Permission Required'),
+          content: const Text('This app needs location permission to send your location to emergency contacts during SOS alerts.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.requestPermission();
+                _getCurrentLocation();
+              },
+              child: const Text('Grant Permission'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPermissionSettingsDialog() {
+     // ... (Dialog implementation) ...
+     showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Permission Required'),
+          content: const Text('Location permission is permanently denied. Please enable it in app settings.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await Geolocator.openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleLocationSuccess(Position position) async {
+    _locationAddress = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+    if (mounted) {
+      setState(() {
+        _currentLocation = 'Location acquired';
+        _locationLoaded = true;
+        _currentPosition = position;
+        _statusMessage = 'Emergency alert sent! Help is on the way.';
+        _isProcessing = false;
+      });
+    }
+    _updateMapLocation(position);
+    _sendLocationToContacts(position);
+    // Send admin alert in background - don't await
+    _sendSOSAlertToAdmin(position);
+  }
+
+  void _updateMapWithDefaultLocation() {
+    if (mounted) {
+      setState(() {
+        _markers.clear();
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('default_location'),
+            position: _defaultLocation,
+            infoWindow: const InfoWindow(
+              title: 'Default Location',
+              snippet: 'Unable to get current location',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          ),
+        );
+      });
+    }
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(_defaultLocation, 12),
+    );
+  }
+
+  Future<void> _sendSOSAlertToAdmin(Position position) async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return;
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return;
+      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      if (profile == null) return;
+      List<String> emergencyContacts = _emergencyContacts.map((contact) => contact['number'] as String).toList();
+      await _supabaseService.createSOSAlert(
+        userId: credentials['phone_number'],
+        userName: profile['full_name'] ?? 'Unknown User',
+        latitude: position.latitude,
+        longitude: position.longitude,
+        locationAddress: _locationAddress,
+        emergencyContacts: emergencyContacts,
+      );
+    } catch (e) {
+      // Silently fail - admin alert is secondary to immediate emergency response
+    }
+  }
+
+  Future<void> _loadEmergencyContactsAndProfile() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return;
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return;
+
+      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      if (profile == null || !mounted) return;
+
+      // Decrypt contact numbers in parallel for speed
+      final decrypt1 = CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+      final decrypt2 = CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+
+      final results = await Future.wait([decrypt1, decrypt2]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _emergencyContacts = [
+          if (profile['emergency_contact_1_name'] != null && results[0] != null)
+            {
+              'name': profile['emergency_contact_1_name'],
+              'number': results[0],
+              'relation': profile['emergency_contact_1_relation'] ?? 'Contact'
+            },
+          if (profile['emergency_contact_2_name'] != null && results[1] != null)
+            {
+              'name': profile['emergency_contact_2_name'],
+              'number': results[1],
+              'relation': profile['emergency_contact_2_relation'] ?? 'Contact'
+            },
+        ];
+        final url = profile['profile_photo_url'] as String?;
+        _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
+      });
+    } catch (e) {
+      // Handle error silently - emergency contacts are not critical for initial SOS
+    }
+  }
+
+  Future<void> _sendLocationToContacts(Position position) async {
+    if (_emergencyContacts.isEmpty) return;
+
+    // Request SMS permission before sending messages
+    final hasPermission = await PermissionUtils.requestSmsPermission(context);
+    if (!hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SMS permission is required to send emergency alerts')),
+        );
+      }
+      return;
+    }
+
+    // Get user's name from cached profile data (already loaded)
+    String userName = 'Unknown User';
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email != null) {
+        final credentials = await _supabaseService.getUserCredentials(email);
+        if (credentials != null) {
+          final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+          if (profile != null && profile['full_name'] != null) {
+            userName = profile['full_name'];
+          }
+        }
+      }
+    } catch (e) {
+      // Keep default name if unable to fetch
+    }
+
+    final locationMessage = 'This is an SOS alert from $userName, I need assistance! My location is https://www.google.com/maps?q=${position.latitude},${position.longitude}. Please respond. - आधारवड ठाणे पोलीस';
+
+    // Extract phone numbers from emergency contacts
+    final phoneNumbers = _emergencyContacts.map((contact) => contact['number'] as String).toList();
+
+    // Send SMS in background without blocking UI
+    PermissionUtils.sendEmergencySmsToContacts(phoneNumbers, locationMessage, context).then((_) {
+      if (mounted) {
+        _showLocalNotification('Emergency Alert Sent', 'Location shared with emergency contacts');
+      }
+    });
+  }
+
+  Future<void> _showLocalNotification(String title, String body) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'emergency_channel',
+      'Emergency Alerts',
+      channelDescription: 'Emergency notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    await _flutterLocalNotificationsPlugin.show(
+      0,
+      title,
+      body,
+      platformChannelSpecifics,
+    );
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    if (_currentPosition != null) {
+      _updateMapLocation(_currentPosition!);
+    } else {
+      _updateMapWithDefaultLocation();
+    }
+  }
+
+  void _updateMapLocation(Position position) {
+    final LatLng currentLatLng = LatLng(position.latitude, position.longitude);
+    if (mounted) {
+      setState(() {
+        _markers.clear();
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('current_location'),
+            position: currentLatLng,
+            infoWindow: const InfoWindow(
+              title: 'Your Location',
+              snippet: 'Emergency location',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          ),
+        );
+      });
+    }
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(currentLatLng, 15),
+    );
+  }
+
+  // --- ROBUST PHONE CALL FUNCTIONALITY FOR LATEST ANDROID DEVICES ---
+  Future<void> _makePhoneCall() async {
+    // Request phone permission before making the call
+    final hasPermission = await PermissionUtils.requestPhonePermission(context);
+
+    if (!hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Phone permission is required to make emergency calls')),
+        );
+      }
+      return;
+    }
+
+    // Police emergency number: 022-25445353
+    await PermissionUtils.launchPhoneCall('02225445353', context);
+
+  }
+
+  // --- UI Components ---
+  Widget _buildAnimatedDots() {
+    return AnimatedBuilder(
+      animation: _dotAnimation,
+      builder: (context, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: Opacity(
+                opacity: _dotAnimation.value > index ? 1.0 : 0.2,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Colors.black, // Changed to black for contrast over the white header area
+                    shape: BoxShape.circle,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            // Red circular close button
-            Padding(
-              padding: const EdgeInsets.only(bottom: 30),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: const CircleBorder(),
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.all(20),
-                  elevation: 5,
-                ),
-                child: const Icon(
-                  Icons.close,
-                  size: 40,
-                  color: Colors.white,
-                ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  Widget _buildStackedAvatars() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final avatarRadius = screenWidth * 0.075;
+
+    return SizedBox(
+      width: screenWidth * 0.3,
+      height: screenWidth * 0.15,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // User Avatar (Right) - Elderly Woman
+          Positioned(
+            right: 0,
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: avatarRadius * 0.93,
+                backgroundImage: _profilePhotoUrl != null
+                    ? NetworkImage(_profilePhotoUrl!)
+                    : AssetImage(_defaultUserAvatarPath) as ImageProvider,
+                backgroundColor: Colors.grey.shade200,
               ),
+            ),
+          ),
+          // Police Avatar (Left) - Male Officer
+          Positioned(
+            left: 0,
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: avatarRadius * 0.93,
+                backgroundImage: const AssetImage('assets/police_avatar.png'), // Placeholder asset
+                backgroundColor: const Color(0xFF6366F1),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Map Widget ---
+  Widget _buildMapWidget(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.5, // Explicitly sized to take middle space
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: CameraPosition(
+              target: _currentPosition != null
+                  ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                  : _defaultLocation,
+              zoom: _currentPosition != null ? 15 : 12,
+            ),
+            markers: _markers,
+            myLocationEnabled: false,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
+            compassEnabled: false,
+            mapType: MapType.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Main Build Method (New Layout) ---
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
+    return Scaffold(
+      // Set background color to match the header's outer color for consistency
+      backgroundColor: Color(0xff8e8e8e),
+      body: Stack(
+        children: [
+          // 1. Decorative Circles (Background) - responsive
+           Positioned(
+                    top: -screenHeight * 0.06,
+                    left: -screenWidth * 0.03,
+                    child: Container(
+                      width: screenWidth * 0.5,
+                      height: screenWidth * 0.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.49),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: screenHeight * 0.01,
+                    left: -screenWidth * 0.2,
+                    child: Container(
+                      width: screenWidth * 0.5,
+                      height: screenWidth * 0.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.49),
+                      ),
+                    ),
+                  ),
+
+          // 2. Main Content Column
+          SafeArea(
+            child: Column(
+              children: [
+                // 2.1 Header Area (Logo, Avatars, Calling Text)
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(top: screenHeight * 0.01, bottom: screenHeight * 0.025),
+                  // Background will be the white circle at the top
+                  child: Column(
+                    children: [
+                      // Logo and Title
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Image.asset(
+                              _logoAssetPath,
+                              width: screenWidth * 0.2,
+                              height: screenWidth * 0.2,
+                              fit: BoxFit.contain,
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: screenHeight * 0.07),
+
+                      // Stacked Avatars
+                      _buildStackedAvatars(),
+
+                      SizedBox(height: screenHeight * 0.025),
+
+                      // Calling text
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Calling',
+                            style: TextStyle(
+                              color: Colors.black, // Dark text over light area
+                              fontSize: screenWidth * 0.05,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          _buildAnimatedDots(),
+                          Text(
+                            'Police',
+                            style: TextStyle(
+                              color: Colors.black, // Dark text over light area
+                              fontSize: screenWidth * 0.05,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Status message
+                      SizedBox(height: screenHeight * 0.01),
+                      Text(
+                        _statusMessage,
+                        style: TextStyle(
+                          color: _isProcessing ? Colors.orange : Colors.green,
+                          fontSize: screenWidth * 0.035,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      // Displaying the original phone number (optional, for debugging/info)
+                      SizedBox(height: screenHeight * 0.005),
+                       Text(
+                        '022-25445353',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: screenWidth * 0.035,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 2.2 Map Widget (The requested mid-section)
+                const SizedBox(height: 20),
+                Expanded(
+                  child: _buildMapWidget(context),
+                ),
+                const SizedBox(height: 20),
+                
+                // 2.3 Footer Area (Cancel Button)
+                Padding(
+                  padding: EdgeInsets.only(bottom: screenHeight * 0.025),
+                  child: SizedBox(
+                    width: screenWidth * 0.2,
+                    height: screenWidth * 0.2,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        // Functionality: Stop call/SOS and navigate back
+                        Navigator.pop(context);
+                      },
+                      backgroundColor: const Color(0xFFEF4444), // Red color
+                      foregroundColor: Colors.white,
+                      shape: const CircleBorder(),
+                      elevation: 10,
+                      child: Icon(
+                        Icons.close, // 'X' icon
+                        size: screenWidth * 0.1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

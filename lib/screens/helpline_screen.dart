@@ -7,66 +7,73 @@ class HelplineScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA), // Light gray background
       body: Stack(
         children: [
-          // Circular decorations
+          // Circular decorations - responsive
           Positioned(
-            top: -60,
-            left: -60,
+            top: -screenHeight * 0.06,
+            left: -screenWidth * 0.03,
             child: Container(
-              width: 140,
-              height: 140,
-              decoration: const BoxDecoration(
-                color: Color(0xFF6366F1), // Blue circle #6366F1
+              width: screenWidth * 0.5,
+              height: screenWidth * 0.5,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: Color(0xff000BAA).withOpacity(0.45),
               ),
             ),
           ),
           Positioned(
-            top: -30,
-            left: 60,
+            top: screenHeight * 0.01,
+            left: -screenWidth * 0.2,
             child: Container(
-              width: 100,
-              height: 100,
+              width: screenWidth * 0.5,
+              height: screenWidth * 0.5,
               decoration: BoxDecoration(
-                color: const Color.fromRGBO(99, 102, 241, 0.6), // lighter blue circle
                 shape: BoxShape.circle,
+                color: Color(0xff000DFF).withOpacity(0.49),
               ),
             ),
           ),
 
-          SafeArea(
+          Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06, vertical: screenHeight * 0.045),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text(
+
+
+                  SizedBox(height: screenHeight * 0.3,),
+                  Text(
                     "Helpline Numbers",
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 20,
+                      fontSize: screenWidth * 0.05,
                       color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: screenHeight * 0.05),
 
                   // --- First Card: Ask for help ---
                   GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterComplaintScreen(),
-                        ),
-                      );
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     // builder: (_) => const RegisterComplaintScreen(),
+                      //   ),
+                      // );
                     },
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.0375),
                         boxShadow: const [
                           BoxShadow(
                             blurRadius: 10,
@@ -75,43 +82,39 @@ class HelplineScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Row(
                         children: [
                           // Support agent icon with blue background
                           Container(
-                            width: 50,
-                            height: 50,
+                            width: screenWidth * 0.125,
+                            height: screenWidth * 0.125,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF4A90E2),
+
                               shape: BoxShape.circle,
                             ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.headset_mic,
-                                color: Colors.white,
-                                size: 24,
-                              ),
+                            child: Center(
+                              child: Image.asset("assets/help.png", width: screenWidth * 0.1,),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * 0.04),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
-                                  "Ask for help",
+                                  "Hospital Contacts",
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 16,
+                                    fontSize: screenWidth * 0.04,
                                     color: Colors.black87,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                SizedBox(height: screenHeight * 0.005),
                                 Text(
-                                  "Register an complaint with us online",
+                                  "Hospital contact info",
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: screenWidth * 0.0325,
                                     color: Colors.black54,
                                       // color: Colors.white,
                                   ),
@@ -120,37 +123,37 @@ class HelplineScreen extends StatelessWidget {
                             ),
                           ),
                           // Support text badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4A90E2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              "SUPPORT",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                          // Container(
+                          //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          //   decoration: BoxDecoration(
+                          //     color: const Color(0xFF4A90E2),
+                          //     borderRadius: BorderRadius.circular(12),
+                          //   ),
+                          //   child: const Text(
+                          //     "SUPPORT",
+                          //     style: TextStyle(
+                          //       color: Colors.white,
+                          //       fontSize: 10,
+                          //       fontWeight: FontWeight.w600,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: screenHeight * 0.006),
 
                   // "Thane Police's Helpline" text
-                  const Text(
-                    "Thane Police's Helpline",
+                  Text(
+                    "Hospital Contacts Numbers",
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: screenWidth * 0.035,
                       color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: screenHeight * 0.05),
 
                   // --- Second Card: National Helpline ---
                   GestureDetector(
@@ -165,7 +168,7 @@ class HelplineScreen extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.0375),
                         boxShadow: const [
                           BoxShadow(
                             blurRadius: 10,
@@ -174,46 +177,39 @@ class HelplineScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Row(
                         children: [
                           // Help icon with red/pink background
                           Container(
-                            width: 50,
-                            height: 50,
+                            width: screenWidth * 0.125,
+                            height: screenWidth * 0.125,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFE53E3E),
+                              // color: Color(0xFFE53E3E),
                               shape: BoxShape.circle,
                             ),
-                            child: const Center(
-                              child: Text(
-                                "HELP",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                            child:  Center(
+                              child:Image.asset("assets/help.png", width: screenWidth * 0.1),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * 0.04),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text(
                                   "National Helpline",
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 16,
+                                    fontSize: screenWidth * 0.04,
                                     color: Colors.black87,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                SizedBox(height: screenHeight * 0.005),
                                 Text(
                                   "Common Helpline Numbers of country are listed here.",
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: screenWidth * 0.0325,
                                     color: Colors.black54,
                                   ),
                                 ),
@@ -224,37 +220,34 @@ class HelplineScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
-
+                  SizedBox(height: screenHeight * 0.006),
                   // "Common Helpline Numbers" text
-                  const Text(
+                  Text(
                     "Common Helpline Numbers",
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: screenWidth * 0.035,
                       color: Colors.black87,
                     ),
                   ),
-
                   const Spacer(),
-
                   SizedBox(
                     width: double.infinity,
-                    height: 46,
+                    height: screenHeight * 0.055,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.01),
                         ),
                         elevation: 0,
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
+                      child: Text(
                         "Back",
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: screenWidth * 0.04,
                           fontWeight: FontWeight.w500,
                           color: Colors.white
                         ),

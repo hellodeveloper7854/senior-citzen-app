@@ -1,80 +1,95 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-
-# Flutter
+# Flutter-specific rules
 -keep class io.flutter.** { *; }
--keep class com.google.gson.** { *; }
--keep class com.google.protobuf.** { *; }
+-keep class com.adhar.** { *; }
 
-# Supabase
--keep class io.supabase.** { *; }
+# Supabase rules
 -keep class com.supabase.** { *; }
--keep class org.postgresql.** { *; }
--keep class io.github.jan.supabase.** { *; }
+-keep class io.supabase.** { *; }
 
-# OkHttp
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
+# Google Maps rules
+-keep class com.google.android.gms.** { *; }
+-keep class com.google.maps.** { *; }
 
-# Retrofit (if used)
--keep class retrofit2.** { *; }
+# URL Launcher rules
+-keep class io.flutter.plugins.urllauncher.** { *; }
 
-# Kotlin
+# Permission Handler rules
+-keep class com.baseflow.permissionhandler.** { *; }
+
+# Location services rules
+-keep class com.baseflow.geolocator.** { *; }
+
+# Local Notifications rules
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+
+# Image Picker rules
+-keep class io.flutter.plugins.imagepicker.** { *; }
+
+# Secure Storage rules
+-keep class com.it_nomads.fluttersecurestorage.** { *; }
+
+# Record plugin rules
+-keep class com.llfbandit.record.** { *; }
+
+# Cryptography rules
+-keep class dev.dart.cryptography.** { *; }
+
+# Shared Preferences rules
+-keep class io.flutter.plugins.sharedpreferences.** { *; }
+
+# Path Provider rules
+-keep class io.flutter.plugins.pathprovider.** { *; }
+
+# Kotlin reflection
 -keep class kotlin.** { *; }
 -keep class kotlin.Metadata { *; }
-
-# Keep data class members
--keepclassmembers class * extends kotlin.coroutines.Continuation {
-    <fields>;
-}
--keepclassmembers class kotlin.coroutines.Continuation {
-    <fields>;
-}
-
-# Keep all classes that might be used via reflection
--keep class * implements java.io.Serializable { *; }
--keep class * extends java.lang.Exception { *; }
-
-# General keep for classes with @Keep annotation
--keep @android.support.annotation.Keep class *
--keep @androidx.annotation.Keep class *
-
-# Keep native methods
--keepclasseswithmembernames class * {
+-keepclasseswithmembers class * {
     native <methods>;
 }
 
-# Keep enum values and methods
--keepclassmembers enum * {
-    public static **[] values();
-    public static ** valueOf(java.lang.String);
+# Keep all classes in the main package
+-keep class com.adhar.adharvad.** { *; }
+
+# Keep all enums
+-keepclassmembers enum * { *; }
+
+# Keep all serializable classes
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
 }
 
-# Flutter Secure Storage
--keep class com.it_nomads.fluttersecurestorage.** { *; }
+# Preserve all annotations
+-keepattributes *Annotation*
 
-# Cryptography/Tink
--keep class com.google.crypto.tink.** { *; }
--keep class org.bouncycastle.** { *; }
+# Preserve all source file and line number information for debugging
+-keepattributes SourceFile,LineNumberTable
 
-# Keep all classes in your package
--keep class com.example.aadharwad.** { *; }
+# Preserve all signatures
+-keepattributes Signature
+
+# Remove logging in release builds
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
+}
+
+# Google Play Core rules to fix R8 build errors
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallException
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManager
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallManagerFactory
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest$Builder
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallRequest
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallSessionState
+-dontwarn com.google.android.play.core.splitinstall.SplitInstallStateUpdatedListener
+-dontwarn com.google.android.play.core.tasks.OnFailureListener
+-dontwarn com.google.android.play.core.tasks.OnSuccessListener
+-dontwarn com.google.android.play.core.tasks.Task
