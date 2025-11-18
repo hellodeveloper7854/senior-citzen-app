@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../utils/crypto_util.dart';
+import 'package:http/http.dart' as http;
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -455,5 +456,71 @@ class SupabaseService {
   // Get police emergency number (default service for SOS)
   Future<String?> getPoliceEmergencyNumber() async {
     return await getEmergencyPhoneNumber('Police');
+  }
+
+  // Send SMS using Supabase Edge Function (via direct HTTP call)
+  Future<void> sendSMS(String phoneNumber, String message) async {
+    const String authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmemJpemd1cG10dHV3bGFqd3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjIwNzQsImV4cCI6MjA3MzkzODA3NH0.BYauXuoJvTaKHMXRC3Al5TtNIoPPVMWYmNgaBr6nRg4';
+    const String functionUrl = 'https://ifzbizgupmttuwlajwtb.supabase.co/functions/v1/send-sms';
+
+    try {
+      // Ensure phoneNumber is a string and remove any non-digit characters
+     
+      
+      final response = await http.post(
+        Uri.parse(functionUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'mobile': phoneNumber,
+          'message': message,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('Failed to send SMS to $phoneNumber: ${response.body}');
+      } else {
+        print('SMS sent successfully to $phoneNumber');
+      }
+    } catch (e) {
+      print('Error sending SMS to $phoneNumber: $e');
+      // Continue with other numbers even if one fails
+    }
+  }
+
+  // Alternative method to send SMS using Supabase Edge Function (for backward compatibility)
+  Future<void> sendSMSViaSupabase(String phoneNumber, String message) async {
+    const String authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmemJpemd1cG10dHV3bGFqd3RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjIwNzQsImV4cCI6MjA3MzkzODA3NH0.BYauXuoJvTaKHMXRC3Al5TtNIoPPVMWYmNgaBr6nRg4';
+
+    try {
+      // Ensure phoneNumber is a string and remove any non-digit characters
+      String formattedMobile = phoneNumber.toString().replaceAll(RegExp(r'[^\d]'), '');
+      
+      // Skip if phone number is empty or invalid
+      if (formattedMobile.isEmpty || formattedMobile == '0000000000') {
+        print('Skipping invalid phone number: $phoneNumber');
+        return;
+      }
+      
+      final response = await _supabase.functions.invoke(
+        'send-sms',
+        body: {
+          'mobile': formattedMobile,
+          'message': message,
+        },
+        headers: {
+          'Authorization': 'Bearer $authToken',
+        },
+      );
+
+      if (response.status != 200) {
+        print('Failed to send SMS to $phoneNumber: ${response.data}');
+      }
+    } catch (e) {
+      print('Error sending SMS to $phoneNumber: $e');
+      // Continue with other numbers even if one fails
+    }
   }
 }

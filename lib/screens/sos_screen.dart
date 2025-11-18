@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -38,12 +37,18 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   Set<Marker> _markers = {};
   final LatLng _defaultLocation = const LatLng(19.0760, 72.8777); // Mumbai coordinates as default
   
-  final String _defaultUserAvatarPath = 'assets/Ellipse.png'; 
-  final String _logoAssetPath = 'assets/Senior Citizen.png'; 
+  final String _defaultUserAvatarPath = 'assets/Ellipse.png';
+  final String _logoAssetPath = 'assets/Senior Citizen.png';
+  
+  // Flag to prevent duplicate SOS alerts
+  bool _sosAlertSent = false;
 
   @override
   void initState() {
     super.initState();
+    // Reset the SOS alert flag to ensure fresh state each time
+    _sosAlertSent = false;
+    
     // Start with immediate actions first
     _updateStatus('Connecting to emergency services...');
     _loadEmergencyPhoneNumber(_emergencyServiceName).then((_) {
@@ -238,7 +243,11 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     _updateMapLocation(position);
     _sendLocationToContacts(position);
     // Send admin alert in background - don't await
-    _sendSOSAlertToAdmin(position);
+    // Only send once using the flag to prevent duplicates
+    if (!_sosAlertSent) {
+      _sosAlertSent = true;
+      _sendSOSAlertToAdmin(position);
+    }
   }
 
   void _updateMapWithDefaultLocation() {
@@ -330,17 +339,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   Future<void> _sendLocationToContacts(Position position) async {
     if (_emergencyContacts.isEmpty) return;
 
-    // Request SMS permission before sending messages
-    final hasPermission = await PermissionUtils.requestSmsPermission(context);
-    if (!hasPermission) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('SMS permission is required to send emergency alerts')),
-        );
-      }
-      return;
-    }
-
     // Get user's name from cached profile data (already loaded)
     String userName = 'Unknown User';
     try {
@@ -363,12 +361,19 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     // Extract phone numbers from emergency contacts
     final phoneNumbers = _emergencyContacts.map((contact) => contact['number'] as String).toList();
 
-    // Send SMS in background without blocking UI
-    PermissionUtils.sendEmergencySmsToContacts(phoneNumbers, locationMessage, context).then((_) {
+    // Send SMS using Supabase Edge Function
+    _sendSMSToContacts(phoneNumbers, locationMessage).then((_) {
       if (mounted) {
         _showLocalNotification('Emergency Alert Sent', 'Location shared with emergency contacts');
       }
     });
+  }
+
+  // New method to send SMS using Supabase Edge Function
+  Future<void> _sendSMSToContacts(List<String> phoneNumbers, String message) async {
+    for (final phoneNumber in phoneNumbers) {
+      await _supabaseService.sendSMS(phoneNumber, message);
+    }
   }
 
   Future<void> _showLocalNotification(String title, String body) async {
