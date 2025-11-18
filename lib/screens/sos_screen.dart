@@ -241,11 +241,12 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       });
     }
     _updateMapLocation(position);
-    _sendLocationToContacts(position);
+    
     // Send admin alert in background - don't await
     // Only send once using the flag to prevent duplicates
     if (!_sosAlertSent) {
       _sosAlertSent = true;
+      _sendLocationToContacts(position);
       _sendSOSAlertToAdmin(position);
     }
   }
