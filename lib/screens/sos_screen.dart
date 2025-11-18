@@ -25,7 +25,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   String? _profilePhotoUrl;
   bool _isProcessing = true; // Show loading state
   String _statusMessage = 'Initializing emergency response...';
-  String _emergencyPhoneNumber = '022-25445353'; // Default fallback number
+  String _emergencyPhoneNumber = '9326520525'; // Default fallback number
   static const String _emergencyServiceName = 'Police'; // Service name to fetch from database
   
   // Animation for the "Calling...." dots
