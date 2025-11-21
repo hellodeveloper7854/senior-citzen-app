@@ -445,7 +445,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
 
     // Use emergency phone number from database
     await PermissionUtils.launchPhoneCall(_emergencyPhoneNumber.replaceAll('-', ''), context);
-
   }
 
   // Load emergency phone number from database based on service name

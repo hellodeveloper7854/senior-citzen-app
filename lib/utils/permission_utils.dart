@@ -38,6 +38,29 @@ class PermissionUtils {
     return false;
   }
 
+  // Request phone call permission for emergency calls
+  static Future<bool> requestPhonePermission(BuildContext context) async {
+    // For Android 13+, we need to request CALL_PHONE permission specifically
+    final phoneStatus = await Permission.phone.status;
+    final callPhoneStatus = await Permission.phone.request();
+
+    if (callPhoneStatus.isGranted || phoneStatus.isGranted) {
+      return true;
+    }
+
+    if (callPhoneStatus.isDenied || callPhoneStatus.isPermanentlyDenied) {
+      await _showPermissionDialog(
+        context,
+        'Phone Permission Required',
+        'This app needs phone permission to make emergency calls to police. Please enable it in app settings.',
+        Permission.phone,
+      );
+      return false;
+    }
+
+    return false;
+  }
+
   // Request location permission for GPS tracking
   static Future<bool> requestLocationPermission(BuildContext context) async {
     final status = await Permission.location.status;
@@ -72,50 +95,6 @@ class PermissionUtils {
     return false;
   }
 
-  // Request phone call permission for emergency calls
-  static Future<bool> requestPhonePermission(BuildContext context) async {
-    // For Android 13+, we need to request CALL_PHONE permission specifically
-    final phoneStatus = await Permission.phone.status;
-    final callPhoneStatus = await Permission.phone.request();
-
-    if (callPhoneStatus.isGranted || phoneStatus.isGranted) {
-      return true;
-    }
-
-    if (callPhoneStatus.isDenied || callPhoneStatus.isPermanentlyDenied) {
-      await _showPermissionDialog(
-        context,
-        'Phone Permission Required',
-        'This app needs phone permission to make emergency calls to police. Please enable it in app settings.',
-        Permission.phone,
-      );
-      return false;
-    }
-
-    return false;
-  }
-
-  // Request SMS permission for emergency SMS
-  static Future<bool> requestSmsPermission(BuildContext context) async {
-    final smsStatus = await Permission.sms.status;
-    final smsRequest = await Permission.sms.request();
-
-    if (smsStatus.isGranted || smsRequest.isGranted) {
-      return true;
-    }
-
-    if (smsRequest.isDenied || smsRequest.isPermanentlyDenied) {
-      await _showPermissionDialog(
-        context,
-        'SMS Permission Required',
-        'This app needs SMS permission to send emergency alerts to your contacts. Please enable it in app settings.',
-        Permission.sms,
-      );
-      return false;
-    }
-
-    return false;
-  }
 
   // Request notification permission (required on Android 13+)
   static Future<bool> requestNotificationPermission(BuildContext context) async {
@@ -256,7 +235,6 @@ class PermissionUtils {
       Permission.location,
       Permission.microphone,
       Permission.phone,
-      Permission.sms,
       Permission.camera,
       Permission.storage,
       Permission.notification,
@@ -303,8 +281,6 @@ class PermissionUtils {
           return 'Microphone';
         case Permission.phone:
           return 'Phone';
-        case Permission.sms:
-          return 'SMS';
         case Permission.camera:
           return 'Camera';
         case Permission.storage:
