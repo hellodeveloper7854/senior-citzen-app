@@ -7,6 +7,7 @@ import './edit_profile_screen.dart';
 import './complaint_status_screen.dart';
 import './recording_status_screen.dart';
 import './sos_alerts_screen.dart';
+import './my_feedbacks_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -365,6 +366,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const RecordingStatusScreen()),
+                            ),
+                          ),
+                          _buildActionRow(
+                            'My Feedbacks',
+                            Icons.feedback,
+                            const Color(0xFFF59E0B),
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const MyFeedbacksScreen()),
                             ),
                           ),
                         ],
