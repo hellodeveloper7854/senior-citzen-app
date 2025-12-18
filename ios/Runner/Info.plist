@@ -51,5 +51,11 @@
 		<!-- Photo Library permission for picking profile image -->
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>This app needs access to your photo library to select a profile picture.</string>
+
+		<!-- Location permissions -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>This app needs access to your location to track and share your position for safety purposes.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>This app needs access to your location to track and share your position for safety purposes even when the app is in the background.</string>
 	</dict>
 </plist>

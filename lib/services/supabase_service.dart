@@ -455,7 +455,13 @@ class SupabaseService {
 
   // Get police emergency number (default service for SOS)
   Future<String?> getPoliceEmergencyNumber() async {
-    return await getEmergencyPhoneNumber('Police');
+    try {
+      return await getEmergencyPhoneNumber('Police');
+    } catch (e) {
+      // Fallback to default emergency number if table doesn't exist
+      print('Error getting emergency number from database: $e');
+      return '100'; // Default emergency number
+    }
   }
 
   // Send SMS using Supabase Edge Function (via direct HTTP call)
@@ -497,13 +503,13 @@ class SupabaseService {
     try {
       // Ensure phoneNumber is a string and remove any non-digit characters
       String formattedMobile = phoneNumber.toString().replaceAll(RegExp(r'[^\d]'), '');
-      
+
       // Skip if phone number is empty or invalid
       if (formattedMobile.isEmpty || formattedMobile == '0000000000') {
         print('Skipping invalid phone number: $phoneNumber');
         return;
       }
-      
+
       final response = await _supabase.functions.invoke(
         'send-sms',
         body: {
@@ -522,5 +528,133 @@ class SupabaseService {
       print('Error sending SMS to $phoneNumber: $e');
       // Continue with other numbers even if one fails
     }
+  }
+
+  // Start tracking session for admin monitoring
+  Future<void> startTrackingSession({
+    required String userPhone,
+    required String userName,
+    required double latitude,
+    required double longitude,
+    required String locationAddress,
+    double? destinationLatitude,
+    double? destinationLongitude,
+    String? destinationAddress,
+  }) async {
+    try {
+      // Get user's police station from profile
+      final userProfile = await getUserProfileByPhone(userPhone);
+      final policeStation = userProfile?['police_station'] ?? 'Unknown';
+
+      await _supabase.from('tracking_sessions').insert({
+        'user_phone': userPhone,
+        'user_name': userName,
+        'police_station': policeStation,
+        'start_latitude': latitude,
+        'start_longitude': longitude,
+        'start_address': locationAddress,
+        'destination_latitude': destinationLatitude,
+        'destination_longitude': destinationLongitude,
+        'destination_address': destinationAddress,
+        'current_latitude': latitude,
+        'current_longitude': longitude,
+        'location_address': locationAddress,
+        'session_start': DateTime.now().toIso8601String(),
+        'last_update': DateTime.now().toIso8601String(),
+        'status': 'active',
+      });
+      print('Tracking session started successfully for $userPhone');
+    } catch (e) {
+      print('Error starting tracking session: $e');
+      // Continue with tracking even if database fails
+      // This ensures the app works even if tables don't exist yet
+    }
+  }
+
+  // Update tracking location
+  Future<void> updateTrackingLocation({
+    required String userPhone,
+    required double latitude,
+    required double longitude,
+    required String locationAddress,
+  }) async {
+    try {
+      await _supabase
+          .from('tracking_sessions')
+          .update({
+            'current_latitude': latitude,
+            'current_longitude': longitude,
+            'location_address': locationAddress,
+            'last_update': DateTime.now().toIso8601String(),
+          })
+          .eq('user_phone', userPhone)
+          .eq('status', 'active');
+    } catch (e) {
+      print('Error updating tracking location: $e');
+      // Continue silently - don't break the app for database issues
+    }
+  }
+
+  // Stop tracking session
+  Future<void> stopTrackingSession(String userPhone) async {
+    try {
+      await _supabase
+          .from('tracking_sessions')
+          .update({
+            'status': 'stopped',
+            'session_end': DateTime.now().toIso8601String(),
+          })
+          .eq('user_phone', userPhone)
+          .eq('status', 'active');
+    } catch (e) {
+      print('Error stopping tracking session: $e');
+      // Continue silently - don't break the app for database issues
+    }
+  }
+
+  // Get all active tracking sessions for admin panel
+  Future<List<Map<String, dynamic>>> getActiveTrackingSessions() async {
+    final response = await _supabase
+        .from('tracking_sessions')
+        .select()
+        .eq('status', 'active')
+        .order('last_update', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // Get tracking history for a specific user
+  Future<List<Map<String, dynamic>>> getUserTrackingHistory(String userPhone) async {
+    final response = await _supabase
+        .from('tracking_sessions')
+        .select()
+        .eq('user_phone', userPhone)
+        .order('session_start', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // Check if user has an active tracking session
+  Future<bool> hasActiveTrackingSession(String userPhone) async {
+    final response = await _supabase
+        .from('tracking_sessions')
+        .select('id')
+        .eq('user_phone', userPhone)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    return response != null;
+  }
+
+// Get active tracking session details for a user
+  Future<Map<String, dynamic>?> getActiveTrackingSession(String userPhone) async {
+    final response = await _supabase
+        .from('tracking_sessions')
+        .select()
+        .eq('user_phone', userPhone)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    return response;
   }
 }
