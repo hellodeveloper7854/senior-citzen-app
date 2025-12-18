@@ -172,18 +172,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Color(0xfff6f6f6),
-      body: SingleChildScrollView(
-         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-          width: double.infinity,
-          height: screenHeight * 0.25,
-          child: Stack(
-          children: [
-          // Decorative circles - responsive
+      body: Stack(
+        children: [
           Positioned(
-          top: -screenHeight * 0.06,
+            top: -screenHeight * 0.06,
             left: -screenWidth * 0.03,
             child: Container(
               width: screenWidth * 0.5,
@@ -206,202 +198,206 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-                  ]),
-        ),
-            SizedBox(height: screenHeight * 0.01),
-            Text(
-              'Welcome!',
-              style: TextStyle(
-                fontSize: screenWidth * 0.06,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            // Header with logo and title
-            Container(
-              padding: EdgeInsets.all(screenWidth * 0.06),
-              margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(screenWidth * 0.05),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Logo - responsive
-                  Center(
-                    child: Image.asset(
-                      'assets/Senior Citizen.png',
-                      fit: BoxFit.cover,
-                      height: screenHeight * 0.2,
-                    ),
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: screenHeight * 0.1),
+                Text(
+                  'Welcome!',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.06,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1F2937),
                   ),
-
-
-                ],
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.04),
-            // Login Form
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Email/Phone input field
-                  SizedBox(height: screenHeight * 0.01),
-                  TextField(
-                    controller: _identifierController,
-                    style: TextStyle(fontSize: screenWidth * 0.04),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your email',
-                      hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
-                      filled: true,
-                      fillColor: const Color(0xFFF9FAFB),
-                      contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
-                      ),
-
-                    ),
-                    keyboardType: TextInputType.text,
+                ),
+                // Header with logo and title
+                Container(
+                  padding: EdgeInsets.all(screenWidth * 0.06),
+                  margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                    border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
                   ),
-                  SizedBox(height: screenHeight * 0.025),
-                  // Password input field
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: !_isPasswordVisible,
-                    style: TextStyle(fontSize: screenWidth * 0.04),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your password',
-                      hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
-                      filled: true,
-                      fillColor: const Color(0xFFF9FAFB),
-                      contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.125),
-                        borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                          color: Color(0xFF9CA3AF),
-                          size: screenWidth * 0.06,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordVisible = !_isPasswordVisible;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  // Forgot Password
-                  Align(
-                    alignment: Alignment.center,
-                    child: TextButton(
-                      onPressed: _showForgotPasswordDialog,
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
-                      ),
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          color: Color(0xFF3E0FAD),
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.w500,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Logo - responsive
+                      Center(
+                        child: Image.asset(
+                          'assets/Senior Citizen.png',
+                          fit: BoxFit.cover,
+                          height: screenHeight * 0.2,
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.03),
 
-                  // Sign In Button
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: screenHeight * 0.06,
-                      child: ElevatedButton(
-                        onPressed: _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(1),
+
+                    ],
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.06),
+                // Login Form
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Email/Phone input field
+                      SizedBox(height: screenHeight * 0.01),
+                      TextField(
+                        controller: _identifierController,
+                        style: TextStyle(fontSize: screenWidth * 0.04),
+                        decoration: InputDecoration(
+                          hintText: 'Enter your email',
+                          hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                           ),
-                          elevation: 2,
-                          shadowColor: const Color(0xFF3E0FAD).withOpacity(0.3),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                          ),
+
                         ),
-                        child: Text(
-                          'Sign In',
+                        keyboardType: TextInputType.text,
+                      ),
+                      SizedBox(height: screenHeight * 0.025),
+                      // Password input field
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        style: TextStyle(fontSize: screenWidth * 0.04),
+                        decoration: InputDecoration(
+                          hintText: 'Enter your password',
+                          hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: screenWidth * 0.04),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.025, horizontal: screenWidth * 0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.125),
+                            borderSide: const BorderSide(color: Color(0xFF3E0FAD), width: 2),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                              color: Color(0xFF9CA3AF),
+                              size: screenWidth * 0.06,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      // Forgot Password
+                      Align(
+                        alignment: Alignment.center,
+                        child: TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                          ),
+                          child: Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              color: Color(0xFF3E0FAD),
+                              fontSize: screenWidth * 0.04,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: screenHeight * 0.03),
+
+                      // Sign In Button
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: screenHeight * 0.06,
+                          child: ElevatedButton(
+                            onPressed: _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                              elevation: 2,
+                              shadowColor: const Color(0xFF3E0FAD).withOpacity(0.3),
+                            ),
+                            child: Text(
+                              'Sign In',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: screenHeight * 0.03),
+
+                // Sign Up section
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  child: RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      text: "Don’t have an account? ",
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.04,
+                        color: Color(0xFF64748B),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: "Start Enrollment",
                           style: TextStyle(
                             fontSize: screenWidth * 0.04,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF3E0FAD),
                           ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SignupScreen(),
+                                ),
+                              );
+                            },
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: screenHeight * 0.03),
-
-            // Sign Up section
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-              child: RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  text: "Don’t have an account? ",
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.04,
-                    color: Color(0xFF64748B),
-                  ),
-                  children: [
-                    TextSpan(
-                      text: "Start Enrollment",
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.04,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF3E0FAD),
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SignupScreen(),
-                            ),
-                          );
-                        },
-                    ),
-                  ],
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
