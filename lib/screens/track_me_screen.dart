@@ -35,6 +35,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Location> _searchResults = [];
   bool _isSearching = false;
+  bool _isFullscreen = false;
 
   // Tracking related variables
   final SupabaseService _supabaseService = SupabaseService();
@@ -737,6 +738,13 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     }
   }
 
+  // Toggle fullscreen map
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -822,120 +830,121 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
             //   ),
             // ),
 
-            // Location inputs section
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                children: [
-                  // Current location input
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.green[300]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.my_location, color: Colors.green[600], size: 24),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _currentAddress,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: _isLoadingLocation ? Colors.grey[400] : Colors.green[700],
-                                  fontWeight: FontWeight.w600,
+            // Location inputs section - hide in fullscreen
+            if (!_isFullscreen)
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  children: [
+                    // Current location input
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.green[300]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.my_location, color: Colors.green[600], size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _currentAddress,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _isLoadingLocation ? Colors.grey[400] : Colors.green[700],
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (_isLoadingLocation)
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                              if (_isLoadingLocation)
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                  ),
+                                )
+                              else if (_currentPosition == null && !_isLoadingLocation)
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(Icons.refresh, color: Colors.green[600], size: 20),
+                                  onPressed: _getCurrentLocation,
                                 ),
-                              )
-                            else if (_currentPosition == null && !_isLoadingLocation)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Icon(Icons.refresh, color: Colors.green[600], size: 20),
-                                onPressed: _getCurrentLocation,
-                              ),
-                          ],
-                        ),
-                        if (_currentLocationDetails.isNotEmpty && !_isLoadingLocation)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 36),
-                            child: Text(
-                              _currentLocationDetails,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green[600],
-                              ),
-                            ),
+                            ],
                           ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Selected destination input
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.red[300]!),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, color: Colors.red[600], size: 24),
-                            const SizedBox(width: 12),
-                            Expanded(
+                          if (_currentLocationDetails.isNotEmpty && !_isLoadingLocation)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, left: 36),
                               child: Text(
-                                _selectedAddress,
+                                _currentLocationDetails,
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.red[700],
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: Colors.green[600],
                                 ),
                               ),
                             ),
-                            if (_selectedDestination != null)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Icon(Icons.clear, color: Colors.red[600], size: 20),
-                                onPressed: _clearDestination,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Selected destination input
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.red[300]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, color: Colors.red[600], size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedAddress,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.red[700],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                          ],
-                        ),
-                        if (_destinationAddress.isNotEmpty && _selectedDestination != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 36),
-                            child: Text(
-                              _destinationAddress,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red[600],
+                              if (_selectedDestination != null)
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(Icons.clear, color: Colors.red[600], size: 20),
+                                  onPressed: _clearDestination,
+                                ),
+                            ],
+                          ),
+                          if (_destinationAddress.isNotEmpty && _selectedDestination != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, left: 36),
+                              child: Text(
+                                _destinationAddress,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red[600],
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
             // Map section
             Expanded(
@@ -1008,6 +1017,33 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       polylines: _polylines,
                       onTap: _onMapTap,
                     ),
+                    // Fullscreen button (top right)
+                    Positioned(
+                      top: 10,
+                      right: 60,
+                      child: GestureDetector(
+                        onTap: _toggleFullscreen,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                            size: 20,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
                     // Compass/settings button (top right)
                     Positioned(
                       top: 10,
@@ -1067,169 +1103,172 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
               ),
             ),
 
-            // Live indicator
-            Container(
-              margin: const EdgeInsets.only(top: 16, left: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.red[400]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.red[600],
-                      shape: BoxShape.circle,
+            // UI elements - hide in fullscreen
+            if (!_isFullscreen) ...[
+              // Live indicator
+              Container(
+                margin: const EdgeInsets.only(top: 16, left: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.red[400]!),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.red[600],
+                        shape: BoxShape.circle,
+                      ),
                     ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Live',
+                      style: TextStyle(
+                        color: Colors.red[600],
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Tracking button
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: ElevatedButton(
+                  onPressed: _toggleTracking,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isTracking
+                        ? Colors.red[600]
+                        : (_selectedDestination != null ? Colors.green[600] : Colors.grey[400]),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 2,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Live',
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isTracking
+                            ? Icons.stop
+                            : (_selectedDestination != null ? Icons.play_arrow : Icons.location_searching),
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _isTracking
+                            ? 'Tracking: ON'
+                            : (_selectedDestination != null ? 'Start Tracking' : 'Select Destination First'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Destination status indicator - commented out
+              // if (_selectedDestination == null && !_isTracking)
+              //   Container(
+              //     width: double.infinity,
+              //     margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              //     padding: const EdgeInsets.all(12),
+              //     decoration: BoxDecoration(
+              //       color: Colors.orange[50],
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(color: Colors.orange[200]!),
+              //     ),
+              //     child: Row(
+              //       children: [
+              //         Icon(Icons.info_outline, color: Colors.orange[600], size: 20),
+              //         const SizedBox(width: 8),
+              //         Expanded(
+              //           child: Text(
+              //             'Please select a destination on the map or search to start tracking',
+              //             style: TextStyle(
+              //               fontSize: 14,
+              //               color: Colors.orange[700],
+              //             ),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+
+              // Call Officer button (always shown)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: ElevatedButton(
+                  onPressed: _callOfficer,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.call,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Call Officer ',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Back button
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(16),
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Back',
                     style: TextStyle(
-                      color: Colors.red[600],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Tracking button
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: ElevatedButton(
-                onPressed: _toggleTracking,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isTracking
-                      ? Colors.red[600]
-                      : (_selectedDestination != null ? Colors.green[600] : Colors.grey[400]),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 2,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isTracking
-                          ? Icons.stop
-                          : (_selectedDestination != null ? Icons.play_arrow : Icons.location_searching),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      _isTracking
-                          ? 'Tracking: ON'
-                          : (_selectedDestination != null ? 'Start Tracking' : 'Select Destination First'),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Destination status indicator - commented out
-            // if (_selectedDestination == null && !_isTracking)
-            //   Container(
-            //     width: double.infinity,
-            //     margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            //     padding: const EdgeInsets.all(12),
-            //     decoration: BoxDecoration(
-            //       color: Colors.orange[50],
-            //       borderRadius: BorderRadius.circular(8),
-            //       border: Border.all(color: Colors.orange[200]!),
-            //     ),
-            //     child: Row(
-            //       children: [
-            //         Icon(Icons.info_outline, color: Colors.orange[600], size: 20),
-            //         const SizedBox(width: 8),
-            //         Expanded(
-            //           child: Text(
-            //             'Please select a destination on the map or search to start tracking',
-            //             style: TextStyle(
-            //               fontSize: 14,
-            //               color: Colors.orange[700],
-            //             ),
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-
-            // Call Officer button (always shown)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: ElevatedButton(
-                onPressed: _callOfficer,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue[700],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 2,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.call,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Call Officer ',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Back button
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Back',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
