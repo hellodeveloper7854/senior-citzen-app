@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'national_helpline_screen.dart';
 import 'register_complaint_screen.dart';
+import 'hospital_helpline_screen.dart';
 
 class HelplineScreen extends StatelessWidget {
   const HelplineScreen({super.key});
@@ -63,12 +64,12 @@ class HelplineScreen extends StatelessWidget {
                   // --- First Card: Ask for help ---
                   GestureDetector(
                     onTap: () {
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     // builder: (_) => const RegisterComplaintScreen(),
-                      //   ),
-                      // );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HospitalHelplineScreen(),
+                        ),
+                      );
                     },
                     child: Container(
                       decoration: BoxDecoration(
