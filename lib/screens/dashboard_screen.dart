@@ -220,38 +220,8 @@ class DashboardScreenState extends State<DashboardScreen> {
                         // Placeholder for the custom logo/title from the image
                         Container(
                           width: screenWidth * 0.5,
-                          height: screenHeight * 0.25,
-                          child : Stack(
-                          children:[
-                              Positioned(
-                      top: -screenHeight * 0.06,
-                      left: -screenWidth * 0.03,
-                      child: Container(
-                        width: screenWidth * 0.5,
-                        height: screenWidth * 0.5,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.49),
+                          height: screenHeight * 0.15,
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      top: screenHeight * 0.01,
-                      left: -screenWidth * 0.2,
-                      child: Container(
-                        width: screenWidth * 0.5,
-                        height: screenWidth * 0.5,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.49),
-                        ),
-                      ),
-                    ),
-
-                          ]
-                        )
-
-                                              ),
 
                         // Profile Icon (Tappable)
                         IconButton(
