@@ -744,82 +744,83 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.grey[300]!),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (query) {
-                        _searchLocation(query);
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search for a destination...',
-                        prefixIcon: Icon(Icons.search, color: Colors.red[600]),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.clear, color: Colors.grey[600]),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchResults = [];
-                                  });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
-
-                  // Search results
-                  if (_searchResults.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, index) {
-                          Location location = _searchResults[index];
-                          return ListTile(
-                            leading: Icon(Icons.place, color: Colors.red[600]),
-                            title: Text('Location ${index + 1}'),
-                            subtitle: Text('${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}'),
-                            onTap: () => _selectDestinationFromSearch(location),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 20), // Added padding on top
+            // Search bar - commented out for now
+            // Container(
+            //   padding: const EdgeInsets.all(16),
+            //   child: Column(
+            //     children: [
+            //       Container(
+            //         decoration: BoxDecoration(
+            //           color: Colors.white,
+            //           borderRadius: BorderRadius.circular(25),
+            //           border: Border.all(color: Colors.grey[300]!),
+            //           boxShadow: [
+            //             BoxShadow(
+            //               color: Colors.black.withOpacity(0.1),
+            //               blurRadius: 4,
+            //               offset: const Offset(0, 2),
+            //             ),
+            //           ],
+            //         ),
+            //         child: TextField(
+            //           controller: _searchController,
+            //           onChanged: (query) {
+            //             _searchLocation(query);
+            //           },
+            //           decoration: InputDecoration(
+            //             hintText: 'Search for a destination...',
+            //             prefixIcon: Icon(Icons.search, color: Colors.red[600]),
+            //             suffixIcon: _searchController.text.isNotEmpty
+            //                 ? IconButton(
+            //                     icon: Icon(Icons.clear, color: Colors.grey[600]),
+            //                     onPressed: () {
+            //                       _searchController.clear();
+            //                       setState(() {
+            //                         _searchResults = [];
+            //                       });
+            //                     },
+            //                   )
+            //                 : null,
+            //             border: InputBorder.none,
+            //             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            //           ),
+            //         ),
+            //       ),
+            //
+            //       // Search results
+            //       if (_searchResults.isNotEmpty)
+            //         Container(
+            //           margin: const EdgeInsets.only(top: 8),
+            //           decoration: BoxDecoration(
+            //             color: Colors.white,
+            //             borderRadius: BorderRadius.circular(12),
+            //             border: Border.all(color: Colors.grey[300]!),
+            //             boxShadow: [
+            //               BoxShadow(
+            //                 color: Colors.black.withOpacity(0.1),
+            //                 blurRadius: 4,
+            //                 offset: const Offset(0, 2),
+            //               ),
+            //             ],
+            //           ),
+            //           child: ListView.builder(
+            //             shrinkWrap: true,
+            //             itemCount: _searchResults.length,
+            //             itemBuilder: (context, index) {
+            //               Location location = _searchResults[index];
+            //               return ListTile(
+            //                 leading: Icon(Icons.place, color: Colors.red[600]),
+            //                 title: Text('Location ${index + 1}'),
+            //                 subtitle: Text('${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}'),
+            //                 onTap: () => _selectDestinationFromSearch(location),
+            //               );
+            //             },
+            //           ),
+            //         ),
+            //     ],
+            //   ),
+            // ),
 
             // Location inputs section
             Container(
@@ -1110,7 +1111,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       ? Colors.red[600]
                       : (_selectedDestination != null ? Colors.green[600] : Colors.grey[400]),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -1119,33 +1120,21 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isTracking
-                            ? Icons.stop
-                            : (_selectedDestination != null ? Icons.play_arrow : Icons.location_searching),
-                        color: _isTracking
-                            ? Colors.red[600]
-                            : (_selectedDestination != null ? Colors.green[600] : Colors.grey[400]),
-                        size: 20,
-                      ),
+                    Icon(
+                      _isTracking
+                          ? Icons.stop
+                          : (_selectedDestination != null ? Icons.play_arrow : Icons.location_searching),
+                      color: Colors.white,
+                      size: 20,
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _isTracking
-                            ? 'Tracking: ON'
-                            : (_selectedDestination != null ? 'Start Tracking' : 'Select Destination First'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Text(
+                      _isTracking
+                          ? 'Tracking: ON'
+                          : (_selectedDestination != null ? 'Start Tracking' : 'Select Destination First'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -1153,33 +1142,33 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
               ),
             ),
 
-            // Destination status indicator
-            if (_selectedDestination == null && !_isTracking)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange[600], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Please select a destination on the map or search to start tracking',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.orange[700],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            // Destination status indicator - commented out
+            // if (_selectedDestination == null && !_isTracking)
+            //   Container(
+            //     width: double.infinity,
+            //     margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            //     padding: const EdgeInsets.all(12),
+            //     decoration: BoxDecoration(
+            //       color: Colors.orange[50],
+            //       borderRadius: BorderRadius.circular(8),
+            //       border: Border.all(color: Colors.orange[200]!),
+            //     ),
+            //     child: Row(
+            //       children: [
+            //         Icon(Icons.info_outline, color: Colors.orange[600], size: 20),
+            //         const SizedBox(width: 8),
+            //         Expanded(
+            //           child: Text(
+            //             'Please select a destination on the map or search to start tracking',
+            //             style: TextStyle(
+            //               fontSize: 14,
+            //               color: Colors.orange[700],
+            //             ),
+            //           ),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
 
             // Call Officer button (always shown)
             Container(
@@ -1190,7 +1179,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[700],
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -1199,23 +1188,16 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.call,
-                        color: Colors.blue[700],
-                        size: 20,
-                      ),
+                    Icon(
+                      Icons.call,
+                      color: Colors.white,
+                      size: 20,
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Call Officer ',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
