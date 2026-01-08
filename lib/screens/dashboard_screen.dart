@@ -6,7 +6,7 @@ import 'sos_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'helpline_screen.dart';
 import 'record_screen.dart';
-import 'track_me_screen2.dart' as track_screen;
+import 'track_me_screen.dart' as track_screen;
 import 'profile_screen.dart';
 import '../services/supabase_service.dart';
 
