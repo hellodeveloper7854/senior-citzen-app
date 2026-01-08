@@ -385,6 +385,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       // Start background location tracking for continuous monitoring
       _startBackgroundLocationTracking();
 
+      // Show persistent notification
+      await _showPersistentTrackingNotification();
+
       _showNotification(
         title: 'Tracking Started',
         body: 'Your journey to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'your destination'} has begun.',
@@ -410,6 +413,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       // Stop background location tracking
       _positionStream?.cancel();
       _positionStream = null;
+
+      // Cancel persistent notification
+      await _cancelPersistentTrackingNotification();
 
       if (_userPhone != null) {
         await _supabaseService.stopTrackingSession(_userPhone!);
@@ -499,6 +505,37 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+  }
+
+  // Show persistent tracking notification
+  Future<void> _showPersistentTrackingNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'tracking_ongoing_channel',
+      'Tracking Ongoing Notifications',
+      channelDescription: 'Persistent notification for active location tracking',
+      importance: Importance.high,
+      priority: Priority.high,
+      ongoing: true, // Makes notification non-dismissable
+      autoCancel: false, // Don't cancel when tapped
+      showWhen: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _notifications.show(
+      2, // Notification ID (different from SOS)
+      'Location Tracking Active',
+      'Your location is being shared. Tap to view.',
+      platformChannelSpecifics,
+      payload: 'tracking_active',
+    );
+  }
+
+  // Cancel persistent tracking notification
+  Future<void> _cancelPersistentTrackingNotification() async {
+    await _notifications.cancel(2);
   }
 
   // Handle notification tap

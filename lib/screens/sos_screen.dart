@@ -187,9 +187,50 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
+
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap
+        if (response.payload != null) {
+          print('Notification tapped: ${response.payload}');
+        }
+      },
+    );
+  }
+
+  // Show persistent notification for SOS
+  Future<void> _showPersistentSOSNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'sos_ongoing_channel',
+      'SOS Ongoing Notifications',
+      channelDescription: 'Persistent notification for active SOS alerts',
+      importance: Importance.high,
+      priority: Priority.high,
+      ongoing: true, // Makes notification non-dismissable
+      autoCancel: false, // Don't cancel when tapped
+      showWhen: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _flutterLocalNotificationsPlugin.show(
+      1, // Notification ID (can be used to update/cancel)
+      'SOS Alert Active',
+      'Your location is being shared with police. Tap to view.',
+      platformChannelSpecifics,
+      payload: 'sos_active',
+    );
+  }
+
+  // Cancel persistent SOS notification
+  Future<void> _cancelPersistentSOSNotification() async {
+    await _flutterLocalNotificationsPlugin.cancel(1);
   }
 
   Future<void> _getCurrentLocation() async {
@@ -336,13 +377,19 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       });
     }
     _updateMapLocation(position);
-    
+
     // Send admin alert in background - don't await
     // Only send once using the flag to prevent duplicates
     if (!_sosAlertSent) {
       _sosAlertSent = true;
       _sendLocationToContacts(position);
       _sendSOSAlertToAdmin(position);
+
+      // Show persistent notification
+      await _showPersistentSOSNotification();
+    } else if (_currentAlertId != null) {
+      // If using existing SOS, show persistent notification
+      await _showPersistentSOSNotification();
     }
   }
 
@@ -541,6 +588,9 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
         'Request terminate',
         notes: 'User terminated the SOS alert from the app',
       );
+
+      // Cancel persistent notification
+      await _cancelPersistentSOSNotification();
 
       // Show notification that alert has been terminated
       await _showLocalNotification(
