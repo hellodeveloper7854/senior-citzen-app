@@ -4,6 +4,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/under_verification_screen.dart';
 import 'screens/rejected_screen.dart';
 import 'services/supabase_service.dart';
+import 'services/navigation_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/permission_utils.dart';
 
@@ -83,6 +84,7 @@ class _MyAppState extends State<MyApp> {
       data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        navigatorKey: NavigationService().navigatorKey,
         title: 'आधारवड ठाणे पोलीस',
         theme: ThemeData(
         colorScheme: const ColorScheme(

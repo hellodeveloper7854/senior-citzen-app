@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../services/supabase_service.dart';
+import '../services/navigation_service.dart';
 import '../utils/crypto_util.dart';
 import '../utils/permission_utils.dart';
 
@@ -194,10 +195,8 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap
-        if (response.payload != null) {
-          print('Notification tapped: ${response.payload}');
-        }
+        // Handle notification tap using NavigationService
+        NavigationService().handleNotificationTap(response);
       },
     );
   }

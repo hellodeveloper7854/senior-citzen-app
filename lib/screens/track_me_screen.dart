@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 import 'dart:math';
 import '../services/supabase_service.dart';
+import '../services/navigation_service.dart';
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({super.key});
@@ -503,7 +504,10 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
     await _notifications.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap using NavigationService
+        NavigationService().handleNotificationTap(response);
+      },
     );
   }
 
@@ -536,12 +540,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Cancel persistent tracking notification
   Future<void> _cancelPersistentTrackingNotification() async {
     await _notifications.cancel(2);
-  }
-
-  // Handle notification tap
-  void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap if needed
-    print('Notification tapped: ${response.payload}');
   }
 
   // Show notification
