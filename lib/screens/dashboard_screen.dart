@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 // Import the screens that are used in the dashboard
 import 'sos_screen.dart';
+import 'sos_alerts_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'helpline_screen.dart';
 import 'record_screen.dart';
@@ -31,10 +32,20 @@ class DashboardScreenState extends State<DashboardScreen> {
   // Back press detection for exit confirmation
   bool _isShowingExitDialog = false;
 
+  // SOS Alert status
+  bool _hasActiveSOS = false;
+  bool _isLoadingSOSStatus = true;
+
+  // Active Tracking status
+  bool _hasActiveTracking = false;
+  bool _isLoadingTrackingStatus = true;
+
   @override
   void initState() {
     super.initState();
     _loadFullName();
+    _checkActiveSOS();
+    _checkActiveTracking();
   }
 
   // --- Data Loading Logic ---
@@ -68,21 +79,97 @@ class DashboardScreenState extends State<DashboardScreen> {
   // --- Pull to Refresh Functionality ---
   Future<void> _onRefresh() async {
     await _loadFullName();
+    await _checkActiveSOS();
+    await _checkActiveTracking();
     // Add a small delay to show the refresh indicator
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
+  // --- Check for Active SOS Alert ---
+  Future<void> _checkActiveSOS() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email != null) {
+        final credentials = await _supabaseService.getUserCredentials(email);
+        if (credentials != null) {
+          final userPhone = credentials['phone_number'];
+          final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
+
+          // Check if there's any active SOS alert
+          final activeAlert = alerts.any((alert) =>
+            alert['status'] == 'active' &&
+            alert['alert_timestamp'] != null
+          );
+
+          if (mounted) {
+            setState(() {
+              _hasActiveSOS = activeAlert;
+              _isLoadingSOSStatus = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silently ignore errors, just mark as not loading
+      if (mounted) {
+        setState(() {
+          _isLoadingSOSStatus = false;
+        });
+      }
+    }
+  }
+
+  // --- Check for Active Tracking Session ---
+  Future<void> _checkActiveTracking() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email != null) {
+        final credentials = await _supabaseService.getUserCredentials(email);
+        if (credentials != null) {
+          final userPhone = credentials['phone_number'];
+          final activeSession = await _supabaseService.getActiveTrackingSession(userPhone);
+
+          if (mounted) {
+            setState(() {
+              _hasActiveTracking = activeSession != null;
+              _isLoadingTrackingStatus = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silently ignore errors, just mark as not loading
+      if (mounted) {
+        setState(() {
+          _isLoadingTrackingStatus = false;
+        });
+      }
+    }
+  }
+
   // --- SOS Functionality (Mimics the original code's _makeEmergencyCall) ---
   Future<void> _makeEmergencyCall() async {
-    // This is the action for the large red SOS button on the dashboard
-    // It should navigate to a dedicated SOS screen or perform an instant action (like a distress message or call)
-    // Based on the image, the SOS button is a grid item, which usually navigates.
+    // If there's an active SOS, navigate to SOS Alerts screen
+    if (_hasActiveSOS) {
+      // Navigate to SOS Alerts screen to view active alert
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const SOSAlertsScreen()),
+      ).then((_) {
+        // Refresh SOS status when returning from alerts screen
+        _checkActiveSOS();
+      });
+      return;
+    }
 
-    // For the "SOS" button functionality, let's navigate to the SOS screen
+    // Otherwise, navigate to the SOS screen to create new alert
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SosScreen()),
-    );
+    ).then((_) {
+      // Refresh SOS status when returning from SOS screen
+      _checkActiveSOS();
+    });
 
     // If you prefer the original code's instant call action, use this instead:
     /*
@@ -207,30 +294,35 @@ class DashboardScreenState extends State<DashboardScreen> {
           backgroundColor: Colors.white,
           child: Column(
           children: [
-            // 1. Purple Header Section (Matches the image)
+            // 1. Purple Header Section (Compact size)
             Container(
-              padding: EdgeInsets.only(top: screenHeight * 0, bottom: screenHeight * 0),
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 8,
+                bottom: 8,
+              ),
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: Color(0xFF340298), // Dominant purple color
               ),
               child: Column(
                 children: [
-                  // Top bar: Time, Logo/Title, Settings Icon
+                  // Top bar with Profile Icon
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Placeholder for the custom logo/title from the image
-                        Container(
-                          width: screenWidth * 0.5,
-                          height: screenHeight * 0.15,
+                        // Logo placeholder
+                        Image.asset(
+                          'assets/Senior Citizen.png',
+                          width: screenWidth * 0.15,
+                          height: screenWidth * 0.15,
+                          fit: BoxFit.contain,
                         ),
 
                         // Profile Icon (Tappable)
                         IconButton(
-                          icon: Icon(Icons.person, color: Colors.white, size: screenWidth * 0.07),
+                          icon: Icon(Icons.person, color: Colors.white, size: screenWidth * 0.06),
                           onPressed: () {
                             // Navigate to Profile/Settings
                             Navigator.push(
@@ -243,43 +335,42 @@ class DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
 
-                  // SizedBox(height: screenHeight * 0.02),
+                  const SizedBox(height: 4),
 
-                  // Profile Picture (Circular)
+                  // Profile Picture (Circular) - Smaller
                   Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.white,
-                        width: screenWidth * 0.01,
+                        width: 2,
                       ),
                     ),
                     child: CircleAvatar(
-                      radius: screenWidth * 0.1,
-                      // Note: Since we don't have the exact image, we'll use a placeholder
+                      radius: screenWidth * 0.08,
                       backgroundImage: _profilePhotoUrl != null
                           ? NetworkImage(_profilePhotoUrl!)
-                          : const AssetImage('assets/elderly_woman.png') as ImageProvider, // Placeholder asset
+                          : const AssetImage('assets/elderly_woman.png') as ImageProvider,
                       backgroundColor: Colors.grey.shade200,
                     ),
                   ),
 
-                  SizedBox(height: screenHeight * 0.015),
+                  const SizedBox(height: 8),
 
-                  // Welcome Text
+                  // Welcome Text - Compact
                   Text(
                     'Welcome,',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: screenWidth * 0.04,
+                      fontSize: screenWidth * 0.035,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
-                    welcomeName, // Display the loaded name
+                    welcomeName,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: screenWidth * 0.06,
+                      fontSize: screenWidth * 0.05,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -287,6 +378,162 @@ class DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
+
+            // SOS Active Alert Banner (if there's an active SOS)
+            if (_hasActiveSOS)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade600, Colors.red.shade700],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.shade400.withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.emergency,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'SOS Alert Active',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            'Help is on the way',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Pulsing indicator
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.5),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Active Tracking Alert Banner (if there's an active tracking session)
+            if (_hasActiveTracking)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green.shade600, Colors.green.shade700],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.shade400.withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tracking Active',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            'Your location is being tracked',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Pulsing indicator
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.5),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // 2. Main Content Grid (Matches the image)
             Expanded(
@@ -421,7 +668,10 @@ class DashboardScreenState extends State<DashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const track_screen.TrackMeScreen()),
-                          );
+                          ).then((_) {
+                            // Refresh tracking status when returning from track me screen
+                            _checkActiveTracking();
+                          });
                         },
                         image: "assets/location.png"
                       ),
