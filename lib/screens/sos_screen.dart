@@ -646,21 +646,20 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
 
                       SizedBox(height: screenHeight * 0.025),
 
-                      // Calling text
+                      // Request sent text
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Calling',
+                            'Request sent to',
                             style: TextStyle(
                               color: Colors.black, // Dark text over light area
                               fontSize: screenWidth * 0.05,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          _buildAnimatedDots(),
                           Text(
-                            'Police',
+                            ' Police',
                             style: TextStyle(
                               color: Colors.black, // Dark text over light area
                               fontSize: screenWidth * 0.05,
