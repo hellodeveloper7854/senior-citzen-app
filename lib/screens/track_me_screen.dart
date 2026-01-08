@@ -42,7 +42,8 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   Timer? _trackingTimer;
   String? _userPhone;
   String? _userName;
-  String _sosNumber = "100"; // Default SOS number
+  String _emergencyPhoneNumber = '9326520525'; // Default fallback number
+  static const String _emergencyServiceName = 'Police'; // Service name to fetch from database
 
   // Background tracking and notification
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -58,6 +59,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   void initState() {
     super.initState();
     _initializeNotifications();
+    _loadEmergencyPhoneNumber(_emergencyServiceName);
     _loadUserData();
     _getCurrentLocation();
   }
@@ -307,7 +309,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     _updateMarkers();
   }
 
-  // Load user data and SOS number
+  // Load user data
   Future<void> _loadUserData() async {
     try {
       final email = await _supabaseService.getCurrentUserEmail();
@@ -324,19 +326,23 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
           await _checkExistingTrackingSession();
         }
       }
-
-      // Get SOS number from emergency contacts with fallback
-      final sosNum = await _supabaseService.getPoliceEmergencyNumber();
-      if (sosNum != null) {
-        _sosNumber = sosNum;
-        setState(() {}); // Update UI with the SOS number
-      }
     } catch (e) {
       print('Error loading user data: $e');
-      // Set default values if loading fails
-      setState(() {
-        _sosNumber = '100'; // Default emergency number
-      });
+    }
+  }
+
+  // Load emergency phone number from database based on service name (same as SOS screen)
+  Future<void> _loadEmergencyPhoneNumber(String serviceName) async {
+    try {
+      final phoneNumber = await _supabaseService.getEmergencyPhoneNumber(serviceName);
+      if (phoneNumber != null && mounted) {
+        setState(() {
+          _emergencyPhoneNumber = phoneNumber;
+        });
+      }
+    } catch (e) {
+      // Keep default number if there's an error
+      print('Error loading emergency phone number for $serviceName: $e');
     }
   }
 
@@ -436,9 +442,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     }
   }
 
-  // Call officer function
+  // Call police function (same as SOS screen logic)
   Future<void> _callOfficer() async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: _sosNumber);
+    final Uri phoneUri = Uri(scheme: 'tel', path: _emergencyPhoneNumber.replaceAll('-', ''));
 
     try {
       if (await canLaunchUrl(phoneUri)) {
@@ -448,7 +454,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Could not launch dialer. Please dial $_sosNumber manually.'),
+              content: Text('Could not launch dialer. Please dial $_emergencyPhoneNumber manually.'),
               backgroundColor: Colors.red,
             ),
           );
@@ -459,7 +465,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening dialer. Please dial $_sosNumber manually.'),
+            content: Text('Error opening dialer. Please dial $_emergencyPhoneNumber manually.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1233,7 +1239,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Call Officer ',
+                        'Call Police',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
