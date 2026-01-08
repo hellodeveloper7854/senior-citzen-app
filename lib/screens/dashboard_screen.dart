@@ -149,20 +149,9 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   // --- SOS Functionality (Mimics the original code's _makeEmergencyCall) ---
   Future<void> _makeEmergencyCall() async {
-    // If there's an active SOS, navigate to SOS Alerts screen
-    if (_hasActiveSOS) {
-      // Navigate to SOS Alerts screen to view active alert
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SOSAlertsScreen()),
-      ).then((_) {
-        // Refresh SOS status when returning from alerts screen
-        _checkActiveSOS();
-      });
-      return;
-    }
-
-    // Otherwise, navigate to the SOS screen to create new alert
+    // Always navigate to SOS screen
+    // If there's an active SOS, it will show "Request sent to Police" message
+    // If there's no active SOS, it will create a new SOS alert
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SosScreen()),

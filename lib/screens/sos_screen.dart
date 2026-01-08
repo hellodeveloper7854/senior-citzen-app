@@ -43,12 +43,76 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   // Flag to prevent duplicate SOS alerts
   bool _sosAlertSent = false;
 
+  // Store the alert ID for updating status
+  int? _currentAlertId;
+
   @override
   void initState() {
     super.initState();
     // Reset the SOS alert flag to ensure fresh state each time
     _sosAlertSent = false;
-    
+    _currentAlertId = null;
+
+    // Check for existing active SOS first
+    _checkExistingActiveSOS().then((hasActive) {
+      if (!hasActive) {
+        // Only create new SOS if no active one exists
+        _initializeSOSWorkflow();
+      } else {
+        // If active SOS exists, just show the screen with existing alert info
+        _updateStatus('SOS Alert Already Active');
+        _loadEmergencyContactsAndProfile();
+        _getCurrentLocation();
+      }
+    });
+  }
+
+  // Check if user already has an active SOS alert
+  Future<bool> _checkExistingActiveSOS() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return false;
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return false;
+
+      final userPhone = credentials['phone_number'];
+      final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
+
+      // Check if there's any active SOS alert
+      final activeAlert = alerts.any((alert) =>
+        alert['status'] == 'active' &&
+        alert['alert_timestamp'] != null
+      );
+
+      if (activeAlert && alerts.isNotEmpty) {
+        // Find the active alert and store its ID
+        final activeAlertData = alerts.firstWhere(
+          (alert) => alert['status'] == 'active',
+          orElse: () => {},
+        );
+
+        if (activeAlertData.isNotEmpty && mounted) {
+          setState(() {
+            _currentAlertId = activeAlertData['id'] as int?;
+            _sosAlertSent = true; // Mark as sent to prevent duplicate
+            _isProcessing = false; // Show completion state
+            _statusMessage = 'SOS Alert Already Active';
+          });
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('Error checking existing SOS: $e');
+      return false;
+    }
+  }
+
+  // Initialize the SOS workflow (create new alert)
+  void _initializeSOSWorkflow() {
     // Start with immediate actions first
     _updateStatus('Connecting to emergency services...');
     _loadEmergencyPhoneNumber(_emergencyServiceName).then((_) {
@@ -282,7 +346,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
       if (profile == null) return;
       List<String> emergencyContacts = _emergencyContacts.map((contact) => contact['number'] as String).toList();
-      await _supabaseService.createSOSAlert(
+      final alertId = await _supabaseService.createSOSAlert(
         userId: credentials['phone_number'],
         userName: profile['full_name'] ?? 'Unknown User',
         latitude: position.latitude,
@@ -290,6 +354,13 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
         locationAddress: _locationAddress,
         emergencyContacts: emergencyContacts,
       );
+
+      // Store the alert ID for later update
+      if (alertId != null && mounted) {
+        setState(() {
+          _currentAlertId = alertId;
+        });
+      }
     } catch (e) {
       // Silently fail - admin alert is secondary to immediate emergency response
     }
@@ -427,6 +498,27 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(currentLatLng, 15),
     );
+  }
+
+  // Update SOS alert status to "Request terminate"
+  Future<void> _updateSOSStatusToTerminated() async {
+    if (_currentAlertId == null) return;
+
+    try {
+      await _supabaseService.updateSOSAlertStatus(
+        _currentAlertId!,
+        'Request terminate',
+        notes: 'User terminated the SOS alert from the app',
+      );
+
+      // Show notification that alert has been terminated
+      await _showLocalNotification(
+        'SOS Alert Terminated',
+        'Your SOS alert has been marked as terminated',
+      );
+    } catch (e) {
+      print('Error updating SOS status: $e');
+    }
   }
 
   // --- ROBUST PHONE CALL FUNCTIONALITY FOR LATEST ANDROID DEVICES ---
@@ -672,7 +764,9 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                       // Status message
                       SizedBox(height: screenHeight * 0.01),
                       Text(
-                        _statusMessage,
+                        _sosAlertSent && !_isProcessing
+                            ? 'SOS Alert Active - Help is on the way'
+                            : _statusMessage,
                         style: TextStyle(
                           color: _isProcessing ? Colors.orange : Colors.green,
                           fontSize: screenWidth * 0.035,
@@ -708,9 +802,83 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                     width: screenWidth * 0.2,
                     height: screenWidth * 0.2,
                     child: FloatingActionButton(
-                      onPressed: () {
-                        // Functionality: Stop call/SOS and navigate back
-                        Navigator.pop(context);
+                      onPressed: () async {
+                        // Show confirmation dialog before closing
+                        final shouldTerminate = await showDialog<bool>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext dialogContext) {
+                            return AlertDialog(
+                              title: Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.orange[600],
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Cancel SOS Alert',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              content: const Text(
+                                'Are you sure you want to cancel this SOS alert?\n\nThis will mark the alert as "Request terminate".',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(dialogContext).pop(false);
+                                  },
+                                  child: Text(
+                                    'Keep Active',
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(dialogContext).pop(true);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red[600],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Terminate',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        // If user confirmed, update status and close
+                        if (shouldTerminate == true) {
+                          await _updateSOSStatusToTerminated();
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
+                        }
                       },
                       backgroundColor: const Color(0xFFEF4444), // Red color
                       foregroundColor: Colors.white,

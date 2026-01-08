@@ -325,7 +325,7 @@ class SupabaseService {
   }
 
   // Create SOS alert for admin monitoring
-  Future<void> createSOSAlert({
+  Future<int?> createSOSAlert({
     required String userId, // phone number
     required String userName,
     required double latitude,
@@ -337,7 +337,7 @@ class SupabaseService {
     final userProfile = await getUserProfileByPhone(userId);
     final policeStation = userProfile?['police_station'] ?? 'Unknown';
 
-    await _supabase.from('sos_alerts').insert({
+    final response = await _supabase.from('sos_alerts').insert({
       'user_id': userId,
       'user_name': userName,
       'police_station': policeStation,
@@ -347,7 +347,12 @@ class SupabaseService {
       'emergency_contacts': emergencyContacts,
       'alert_timestamp': DateTime.now().toIso8601String(),
       'status': 'active',
-    });
+    }).select('id');
+
+    if (response.isNotEmpty) {
+      return response.first['id'] as int;
+    }
+    return null;
   }
 
   // Get all SOS alerts for admin
