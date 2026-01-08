@@ -40,12 +40,17 @@ class DashboardScreenState extends State<DashboardScreen> {
   bool _hasActiveTracking = false;
   bool _isLoadingTrackingStatus = true;
 
+  // Notification counts
+  int _unreadNotificationCount = 0;
+  bool _isLoadingNotifications = true;
+
   @override
   void initState() {
     super.initState();
     _loadFullName();
     _checkActiveSOS();
     _checkActiveTracking();
+    _loadUnreadNotifications();
   }
 
   // --- Data Loading Logic ---
@@ -81,6 +86,7 @@ class DashboardScreenState extends State<DashboardScreen> {
     await _loadFullName();
     await _checkActiveSOS();
     await _checkActiveTracking();
+    await _loadUnreadNotifications();
     // Add a small delay to show the refresh indicator
     await Future.delayed(const Duration(milliseconds: 500));
   }
@@ -170,6 +176,59 @@ class DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // --- Load Unread Notifications Count ---
+  Future<void> _loadUnreadNotifications() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return;
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return;
+
+      final userPhone = credentials['phone_number'];
+      int unreadCount = 0;
+
+      // 1. Count complaints with status updates (not 'pending')
+      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      for (var complaint in complaints) {
+        // Count complaints that have been viewed or have status updates
+        if (complaint['status'] != null &&
+            complaint['status'] != 'pending' &&
+            (complaint['is_viewed'] == null || complaint['is_viewed'] == false)) {
+          unreadCount++;
+        }
+      }
+
+      // 2. Count SOS alerts with responses (resolved or with notes)
+      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      for (var alert in sosAlerts) {
+        // Count alerts that have been resolved or have notes
+        if ((alert['status'] == 'resolved' || alert['status'] == 'Request terminate' ||
+             alert['status'] == 'expired') &&
+            (alert['is_viewed'] == null || alert['is_viewed'] == false)) {
+          unreadCount++;
+        }
+      }
+
+      // 3. Count recordings with responses (if there's a recordings table)
+      // For now, we'll focus on complaints and SOS alerts
+
+      if (mounted) {
+        setState(() {
+          _unreadNotificationCount = unreadCount;
+          _isLoadingNotifications = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading notifications: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingNotifications = false;
+        });
+      }
+    }
+  }
+
   // --- SOS Functionality (Mimics the original code's _makeEmergencyCall) ---
   Future<void> _makeEmergencyCall() async {
     // Always navigate to SOS screen
@@ -194,6 +253,269 @@ class DashboardScreenState extends State<DashboardScreen> {
       );
     }
     */
+  }
+
+  // --- Show Notifications Bottom Sheet ---
+  Future<void> _showNotificationsBottomSheet() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF340298),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Notifications List
+              Expanded(
+                child: FutureBuilder(
+                  future: _fetchNotifications(),
+                  builder: (context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_none,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No notifications',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final notifications = snapshot.data!;
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: notifications.length,
+                      itemBuilder: (context, index) {
+                        final notification = notifications[index];
+                        return _buildNotificationItem(notification);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((_) {
+      // Refresh notification count when closing bottom sheet
+      _loadUnreadNotifications();
+    });
+  }
+
+  // Fetch notifications from database
+  Future<List<Map<String, dynamic>>> _fetchNotifications() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return [];
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return [];
+
+      final userPhone = credentials['phone_number'];
+      List<Map<String, dynamic>> allNotifications = [];
+
+      // Get complaints with status updates
+      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      for (var complaint in complaints) {
+        if (complaint['status'] != null && complaint['status'] != 'pending') {
+          allNotifications.add({
+            'type': 'complaint',
+            'id': complaint['id'],
+            'title': 'Complaint Update',
+            'message': 'Your complaint status is: ${complaint['status']}',
+            'timestamp': complaint['submitted_at'],
+            'status': complaint['status'],
+            'is_viewed': complaint['is_viewed'] ?? false,
+          });
+        }
+      }
+
+      // Get SOS alerts with responses
+      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      for (var alert in sosAlerts) {
+        if (alert['status'] != 'active') {
+          allNotifications.add({
+            'type': 'sos',
+            'id': alert['id'],
+            'title': 'SOS Alert ${alert['status']?.toString().toUpperCase() ?? ''}',
+            'message': alert['notes'] ?? 'Your SOS alert has been ${alert['status']}',
+            'timestamp': alert['alert_timestamp'],
+            'status': alert['status'],
+            'is_viewed': alert['is_viewed'] ?? false,
+          });
+        }
+      }
+
+      // Sort by timestamp descending
+      allNotifications.sort((a, b) {
+        final aTime = DateTime.parse(a['timestamp']);
+        final bTime = DateTime.parse(b['timestamp']);
+        return bTime.compareTo(aTime);
+      });
+
+      return allNotifications;
+    } catch (e) {
+      print('Error fetching notifications: $e');
+      return [];
+    }
+  }
+
+  // Build notification item widget
+  Widget _buildNotificationItem(Map<String, dynamic> notification) {
+    IconData icon;
+    Color iconColor;
+
+    switch (notification['type']) {
+      case 'complaint':
+        icon = Icons.report_problem;
+        iconColor = Colors.orange;
+        break;
+      case 'sos':
+        icon = Icons.emergency;
+        iconColor = Colors.red;
+        break;
+      default:
+        icon = Icons.notifications;
+        iconColor = Colors.grey;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: notification['is_viewed'] ? Colors.grey.shade100 : Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: notification['is_viewed'] ? Colors.grey.shade300 : Colors.blue.shade200,
+          width: notification['is_viewed'] ? 1 : 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notification['title'],
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: notification['is_viewed'] ? Colors.grey.shade700 : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  notification['message'],
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatTimestamp(notification['timestamp']),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!notification['is_viewed'])
+            Container(
+              width: 10,
+              height: 10,
+              margin: const EdgeInsets.only(left: 8),
+              decoration: const BoxDecoration(
+                color: Colors.blue,
+                shape: BoxShape.circle,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Format timestamp
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inHours < 1) {
+        return '${difference.inMinutes}m ago';
+      } else if (difference.inDays < 1) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}d ago';
+      } else {
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+    } catch (e) {
+      return timestamp;
+    }
   }
 
   // --- UI Widget Builder for Grid Items ---
@@ -318,7 +640,7 @@ class DashboardScreenState extends State<DashboardScreen> {
               ),
               child: Column(
                 children: [
-                  // Top bar with Profile Icon
+                  // Top bar with Profile Icon and Notification Bell
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -332,16 +654,76 @@ class DashboardScreenState extends State<DashboardScreen> {
                           fit: BoxFit.contain,
                         ),
 
-                        // Profile Icon (Tappable)
-                        IconButton(
-                          icon: Icon(Icons.person, color: Colors.white, size: screenWidth * 0.06),
-                          onPressed: () {
-                            // Navigate to Profile/Settings
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                            );
-                          },
+                        // Right side icons
+                        Row(
+                          children: [
+                            // Notification Bell with Badge
+                            Stack(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.notifications,
+                                    color: Colors.white,
+                                    size: screenWidth * 0.06,
+                                  ),
+                                  onPressed: () {
+                                    // Navigate to notifications screen
+                                    _showNotificationsBottomSheet();
+                                  },
+                                ),
+                                // Badge for unread count
+                                if (_unreadNotificationCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFF340298),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        _unreadNotificationCount > 99
+                                            ? '99+'
+                                            : '$_unreadNotificationCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            // Profile Icon (Tappable)
+                            IconButton(
+                              icon: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: screenWidth * 0.06,
+                              ),
+                              onPressed: () {
+                                // Navigate to Profile/Settings
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
