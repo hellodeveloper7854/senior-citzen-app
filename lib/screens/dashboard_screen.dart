@@ -28,6 +28,9 @@ class DashboardScreenState extends State<DashboardScreen> {
   String _fullName = 'User'; // Default name
   String? _profilePhotoUrl;
 
+  // Back press detection for exit confirmation
+  bool _isShowingExitDialog = false;
+
   @override
   void initState() {
     super.initState();
@@ -194,13 +197,15 @@ class DashboardScreenState extends State<DashboardScreen> {
         ? _fullName.split(' ').sublist(0, 2).join(' ') // Use first two words
         : _fullName;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        color: const Color(0xFF3E0FAD),
-        backgroundColor: Colors.white,
-        child: Column(
+    return WillPopScope(
+      onWillPop: _handleWillPop,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: RefreshIndicator(
+          onRefresh: _onRefresh,
+          color: const Color(0xFF3E0FAD),
+          backgroundColor: Colors.white,
+          child: Column(
           children: [
             // 1. Purple Header Section (Matches the image)
             Container(
@@ -443,6 +448,89 @@ class DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
+    ),
     );
+  }
+
+  // Handle back button press with confirmation dialog
+  Future<bool> _handleWillPop() async {
+    // Prevent multiple dialogs
+    if (_isShowingExitDialog) {
+      return false;
+    }
+
+    _isShowingExitDialog = true;
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // User must tap a button
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.exit_to_app,
+                color: Colors.red[600],
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Exit App',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to exit the app?',
+            style: TextStyle(fontSize: 16),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _isShowingExitDialog = false;
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _isShowingExitDialog = false;
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Exit',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldExit ?? false;
   }
 }
