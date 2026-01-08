@@ -95,15 +95,38 @@ class DashboardScreenState extends State<DashboardScreen> {
           final userPhone = credentials['phone_number'];
           final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
 
-          // Check if there's any active SOS alert
-          final activeAlert = alerts.any((alert) =>
-            alert['status'] == 'active' &&
-            alert['alert_timestamp'] != null
-          );
+          // Check if there's any active SOS alert within 15 minutes
+          final now = DateTime.now();
+          const duration = Duration(minutes: 15);
+          bool hasActiveAlert = false;
+
+          for (var alert in alerts) {
+            if (alert['status'] == 'active' && alert['alert_timestamp'] != null) {
+              try {
+                final alertTime = DateTime.parse(alert['alert_timestamp']);
+                final timeDifference = now.difference(alertTime);
+
+                // If alert is within 15 minutes, consider it active
+                if (timeDifference <= duration) {
+                  hasActiveAlert = true;
+                  break;
+                } else {
+                  // Alert is older than 15 minutes, auto-expire it
+                  await _supabaseService.updateSOSAlertStatus(
+                    alert['id'],
+                    'expired',
+                    notes: 'Auto-expired after 15 minutes',
+                  );
+                }
+              } catch (e) {
+                print('Error parsing alert timestamp: $e');
+              }
+            }
+          }
 
           if (mounted) {
             setState(() {
-              _hasActiveSOS = activeAlert;
+              _hasActiveSOS = hasActiveAlert;
               _isLoadingSOSStatus = false;
             });
           }

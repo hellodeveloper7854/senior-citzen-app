@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -46,12 +47,21 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   // Store the alert ID for updating status
   int? _currentAlertId;
 
+  // Store alert timestamp for time remaining calculation
+  DateTime? _alertTimestamp;
+
+  // Timer for updating time remaining
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     // Reset the SOS alert flag to ensure fresh state each time
     _sosAlertSent = false;
     _currentAlertId = null;
+
+    // Start timer to update time remaining display
+    _startTimer();
 
     // Check for existing active SOS first
     _checkExistingActiveSOS().then((hasActive) {
@@ -63,6 +73,15 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
         _updateStatus('SOS Alert Already Active');
         _loadEmergencyContactsAndProfile();
         _getCurrentLocation();
+      }
+    });
+  }
+
+  // Start timer to update time remaining
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && _sosAlertSent && !_isProcessing && _alertTimestamp != null) {
+        setState(() {}); // Trigger rebuild to update time remaining
       }
     });
   }
@@ -79,29 +98,40 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       final userPhone = credentials['phone_number'];
       final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
 
-      // Check if there's any active SOS alert
-      final activeAlert = alerts.any((alert) =>
-        alert['status'] == 'active' &&
-        alert['alert_timestamp'] != null
-      );
+      // Check if there's any active SOS alert within 15 minutes
+      final now = DateTime.now();
+      const duration = Duration(minutes: 15);
 
-      if (activeAlert && alerts.isNotEmpty) {
-        // Find the active alert and store its ID
-        final activeAlertData = alerts.firstWhere(
-          (alert) => alert['status'] == 'active',
-          orElse: () => {},
-        );
+      for (var alert in alerts) {
+        if (alert['status'] == 'active' && alert['alert_timestamp'] != null) {
+          try {
+            final alertTime = DateTime.parse(alert['alert_timestamp']);
+            final timeDifference = now.difference(alertTime);
 
-        if (activeAlertData.isNotEmpty && mounted) {
-          setState(() {
-            _currentAlertId = activeAlertData['id'] as int?;
-            _sosAlertSent = true; // Mark as sent to prevent duplicate
-            _isProcessing = false; // Show completion state
-            _statusMessage = 'SOS Alert Already Active';
-          });
+            // If alert is within 15 minutes, consider it active
+            if (timeDifference <= duration) {
+              if (mounted) {
+                setState(() {
+                  _currentAlertId = alert['id'] as int?;
+                  _sosAlertSent = true;
+                  _isProcessing = false;
+                  _statusMessage = 'SOS Alert Active - Help is on the way';
+                  _alertTimestamp = alertTime;
+                });
+              }
+              return true;
+            } else {
+              // Alert is older than 15 minutes, auto-expire it
+              await _supabaseService.updateSOSAlertStatus(
+                alert['id'],
+                'expired',
+                notes: 'Auto-expired after 15 minutes',
+              );
+            }
+          } catch (e) {
+            print('Error parsing alert timestamp: $e');
+          }
         }
-
-        return true;
       }
 
       return false;
@@ -148,6 +178,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   void dispose() {
     _dotController.dispose();
     _mapController?.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -521,6 +552,23 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     }
   }
 
+  // Calculate time remaining for SOS alert
+  String _getTimeRemaining() {
+    if (_alertTimestamp == null) return '';
+
+    final now = DateTime.now();
+    final difference = now.difference(_alertTimestamp!);
+    const totalDuration = Duration(minutes: 15);
+    final remaining = totalDuration - difference;
+
+    if (remaining.isNegative) return 'Expired';
+
+    final minutes = remaining.inMinutes;
+    final seconds = remaining.inSeconds % 60;
+
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
   // --- ROBUST PHONE CALL FUNCTIONALITY FOR LATEST ANDROID DEVICES ---
   Future<void> _makePhoneCall() async {
     // Request phone permission before making the call
@@ -774,6 +822,44 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                         ),
                         textAlign: TextAlign.center,
                       ),
+
+                      // Time remaining (only when alert is active)
+                      if (_sosAlertSent && !_isProcessing && _getTimeRemaining().isNotEmpty)
+                        Column(
+                          children: [
+                            SizedBox(height: screenHeight * 0.01),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.orange.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 18,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Expires in: ${_getTimeRemaining()}',
+                                    style: TextStyle(
+                                      color: Colors.orange.shade700,
+                                      fontSize: screenWidth * 0.032,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
 
                       // Displaying the emergency phone number from database
                       SizedBox(height: screenHeight * 0.005),
