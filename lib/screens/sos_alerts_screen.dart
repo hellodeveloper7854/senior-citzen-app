@@ -312,56 +312,54 @@ class SOSAlertsScreenState extends State<SOSAlertsScreen> {
                                               ),
                                             ),
 
-                                          // Resolution Info
-                                          if (alert['resolved_by'] != null || alert['notes'] != null)
+                                          // Notes Section (if available)
+                                          if (alert['notes'] != null && alert['notes'].toString().trim().isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 12),
                                               child: Container(
                                                 padding: const EdgeInsets.all(12),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue.shade50,
+                                                  color: Colors.amber.shade50,
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: Colors.blue.shade200,
+                                                    color: Colors.amber.shade200,
                                                   ),
                                                 ),
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    if (alert['resolved_by'] != null)
-                                                      Row(
-                                                        children: [
-                                                          Icon(
-                                                            Icons.person,
-                                                            size: 16,
-                                                            color: Colors.blue.shade700,
-                                                          ),
-                                                          const SizedBox(width: 4),
-                                                          Text(
-                                                            'Resolved by: ${alert['resolved_by']}',
-                                                            style: TextStyle(
-                                                              color: Colors.blue.shade700,
-                                                              fontWeight: FontWeight.w600,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    if (alert['resolved_by'] != null && alert['notes'] != null)
-                                                      const SizedBox(height: 4),
-                                                    if (alert['notes'] != null)
-                                                      Text(
-                                                        alert['notes'],
-                                                        style: TextStyle(
-                                                          color: Colors.blue.shade800,
-                                                          fontSize: 13,
-                                                          height: 1.3,
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.note,
+                                                          size: 16,
+                                                          color: Colors.amber.shade700,
                                                         ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          'Notes:',
+                                                          style: TextStyle(
+                                                            color: Colors.amber.shade700,
+                                                            fontWeight: FontWeight.w600,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      alert['notes'].toString(),
+                                                      style: TextStyle(
+                                                        color: Colors.amber.shade900,
+                                                        fontSize: 13,
+                                                        height: 1.3,
                                                       ),
+                                                    ),
                                                   ],
                                                 ),
                                               ),
                                             ),
+
                                         ],
                                       ),
                                     ),
