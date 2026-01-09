@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../services/supabase_service.dart';
 
 class RecordingStatusScreen extends StatefulWidget {
@@ -10,14 +11,23 @@ class RecordingStatusScreen extends StatefulWidget {
 
 class RecordingStatusScreenState extends State<RecordingStatusScreen> {
   final SupabaseService _supabaseService = SupabaseService();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   List<Map<String, dynamic>> _recordings = [];
   bool _isLoading = true;
   String? _userPhone;
+  bool _isPlaying = false;
+  String? _playingUrl;
 
   @override
   void initState() {
     super.initState();
     _loadUserRecordings();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserRecordings() async {
@@ -40,6 +50,36 @@ class RecordingStatusScreenState extends State<RecordingStatusScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load recordings: $e')),
+      );
+    }
+  }
+
+  Future<void> _playRecording(String url) async {
+    try {
+      if (_isPlaying && _playingUrl == url) {
+        await _audioPlayer.stop();
+        setState(() {
+          _isPlaying = false;
+          _playingUrl = null;
+        });
+      } else {
+        await _audioPlayer.stop(); // Stop any current playback
+        await _audioPlayer.play(UrlSource(url));
+        setState(() {
+          _isPlaying = true;
+          _playingUrl = url;
+        });
+
+        _audioPlayer.onPlayerComplete.listen((event) {
+          setState(() {
+            _isPlaying = false;
+            _playingUrl = null;
+          });
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to play recording: $e')),
       );
     }
   }
@@ -247,6 +287,17 @@ class RecordingStatusScreenState extends State<RecordingStatusScreen> {
                                                   ],
                                                 ),
                                               ),
+                                              if (recording['audio_url'] != null)
+                                                IconButton(
+                                                  icon: Icon(
+                                                    _isPlaying && _playingUrl == recording['audio_url']
+                                                        ? Icons.stop
+                                                        : Icons.play_arrow,
+                                                    color: const Color(0xFF3E0FAD),
+                                                    size: 28,
+                                                  ),
+                                                  onPressed: () => _playRecording(recording['audio_url']),
+                                                ),
                                             ],
                                           ),
 
@@ -280,19 +331,48 @@ class RecordingStatusScreenState extends State<RecordingStatusScreen> {
                                               ),
                                             ),
 
-                                          // Recording URL (if available)
-                                          if (recording['audio_url'] != null)
+                                          // Admin Notes (if available)
+                                          if (recording['notes'] != null && recording['notes'].toString().trim().isNotEmpty)
                                             Padding(
-                                              padding: const EdgeInsets.only(top: 8),
-                                              child: Text(
-                                                "Audio file available for review",
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade600,
-                                                  fontSize: 12,
-                                                  fontStyle: FontStyle.italic,
+                                              padding: const EdgeInsets.only(top: 12),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade50,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.blue.shade200),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.admin_panel_settings, color: Colors.blue.shade600, size: 16),
+                                                        const SizedBox(width: 8),
+                                                        Text(
+                                                          'Notes',
+                                                          style: TextStyle(
+                                                            color: Colors.blue.shade800,
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      recording['notes'],
+                                                      style: TextStyle(
+                                                        color: Colors.black87,
+                                                        fontSize: 14,
+                                                        height: 1.4,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
+
                                         ],
                                       ),
                                     ),

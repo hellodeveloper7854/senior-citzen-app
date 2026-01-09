@@ -54,6 +54,7 @@ dependencies:
   permission_handler: ^11.0.1
   http: ^1.2.1
   background_fetch: ^1.2.1
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   change_app_package_name: ^1.0.0

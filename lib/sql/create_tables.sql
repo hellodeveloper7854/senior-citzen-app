@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS audio_recordings (
   audio_url TEXT NOT NULL,
   recorded_at TIMESTAMP NOT NULL,
   status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'reviewed', 'archived'
+  admin_notes TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 

@@ -258,10 +258,14 @@ class SupabaseService {
   }
 
   // Update recording status
-  Future<void> updateRecordingStatus(int recordingId, String status) async {
+  Future<void> updateRecordingStatus(int recordingId, String status, {String? adminNotes}) async {
+    final updateData = {'status': status};
+    if (adminNotes != null) {
+      updateData['notes'] = adminNotes;
+    }
     await _supabase
         .from('audio_recordings')
-        .update({'status': status})
+        .update(updateData)
         .eq('id', recordingId);
   }
 
