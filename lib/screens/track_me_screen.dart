@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:math';
 import '../services/supabase_service.dart';
 import '../services/navigation_service.dart';
+import '../services/tracking_service.dart';
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({super.key});
@@ -40,7 +41,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
   // Tracking related variables
   final SupabaseService _supabaseService = SupabaseService();
-  Timer? _trackingTimer;
+  final TrackingService _trackingService = TrackingService();
   String? _userPhone;
   String? _userName;
   String _emergencyPhoneNumber = '9326520525'; // Default fallback number
@@ -59,10 +60,23 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
+    _initializeNotificationListeners();
     _loadEmergencyPhoneNumber(_emergencyServiceName);
     _loadUserData();
     _getCurrentLocation();
+
+    // Listen to global tracking service state changes
+    _trackingService.addListener(_onTrackingServiceChanged);
+
+    // Initialize with current tracking state
+    _isTracking = _trackingService.isTracking;
+    if (_trackingService.selectedDestination != null) {
+      _selectedDestination = _trackingService.selectedDestination;
+      _destinationAddress = _trackingService.destinationAddress;
+      _selectedAddress = 'Tracking in progress...';
+      _updateMarkers();
+      _drawRoute();
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -310,6 +324,27 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     _updateMarkers();
   }
 
+  // Callback when tracking service state changes
+  void _onTrackingServiceChanged() {
+    if (mounted) {
+      setState(() {
+        _isTracking = _trackingService.isTracking;
+        _selectedDestination = _trackingService.selectedDestination;
+        _destinationAddress = _trackingService.destinationAddress;
+
+        if (_isTracking && _selectedDestination != null) {
+          _selectedAddress = 'Tracking in progress...';
+        } else if (!_isTracking) {
+          _selectedAddress = "Tap map or search to select destination";
+        }
+
+        // Update markers and route
+        _updateMarkers();
+        _drawRoute();
+      });
+    }
+  }
+
   // Load user data
   Future<void> _loadUserData() async {
     try {
@@ -323,8 +358,8 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
             _userName = profile['full_name'] ?? 'Unknown User';
           }
 
-          // Check for existing active tracking session
-          await _checkExistingTrackingSession();
+          // Note: Existing tracking session is now handled by TrackingService
+          // No need to check here as it's already initialized in main.dart
         }
       }
     } catch (e) {
@@ -363,44 +398,26 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     await _requestBackgroundLocationPermission();
 
     try {
-      setState(() {
-        _isTracking = true; // Update UI immediately for better UX
-      });
-
-      await _supabaseService.startTrackingSession(
-        userPhone: _userPhone ?? 'unknown',
-        userName: _userName ?? 'Unknown User',
-        latitude: _currentPosition!.latitude,
-        longitude: _currentPosition!.longitude,
+      final success = await _trackingService.startTracking(
+        currentPosition: _currentPosition!,
         locationAddress: _currentLocationDetails.split('\n').first,
-        destinationLatitude: _selectedDestination!.latitude,
-        destinationLongitude: _selectedDestination!.longitude,
-        destinationAddress: _destinationAddress.isNotEmpty ? _destinationAddress : null,
+        destination: _selectedDestination!,
+        destinationAddress: _destinationAddress,
       );
 
-      // Start periodic location updates (every 30 seconds)
-      _trackingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-        _updateLocationInDatabase();
-      });
+      if (success) {
+        _showNotification(
+          title: 'Tracking Started',
+          body: 'Your journey to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'your destination'} has begun.',
+        );
 
-      // Start background location tracking for continuous monitoring
-      _startBackgroundLocationTracking();
-
-      // Show persistent notification
-      await _showPersistentTrackingNotification();
-
-      _showNotification(
-        title: 'Tracking Started',
-        body: 'Your journey to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'your destination'} has begun.',
-      );
-
-      _showMessage('Tracking started successfully to your destination', Colors.green);
-      print('Tracking started successfully with background monitoring');
+        _showMessage('Tracking started successfully to your destination', Colors.green);
+        print('Tracking started successfully with background monitoring');
+      } else {
+        _showMessage('Failed to start tracking', Colors.red);
+      }
     } catch (e) {
       print('Error starting tracking: $e');
-      setState(() {
-        _isTracking = false;
-      });
       _showMessage('Failed to start tracking', Colors.red);
     }
   }
@@ -408,44 +425,16 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Stop tracking session
   Future<void> _stopTracking() async {
     try {
-      _trackingTimer?.cancel();
-      _trackingTimer = null;
+      final success = await _trackingService.stopTracking();
 
-      // Stop background location tracking
-      _positionStream?.cancel();
-      _positionStream = null;
-
-      // Cancel persistent notification
-      await _cancelPersistentTrackingNotification();
-
-      if (_userPhone != null) {
-        await _supabaseService.stopTrackingSession(_userPhone!);
+      if (success) {
+        print('Tracking stopped successfully');
+      } else {
+        _showMessage('Error stopping tracking', Colors.red);
       }
-
-      setState(() {
-        _isTracking = false;
-      });
-
-      print('Tracking stopped successfully');
     } catch (e) {
       print('Error stopping tracking: $e');
       _showMessage('Error stopping tracking', Colors.red);
-    }
-  }
-
-  // Update location in database
-  Future<void> _updateLocationInDatabase() async {
-    if (_userPhone == null || _currentPosition == null || !_isTracking) return;
-
-    try {
-      await _supabaseService.updateTrackingLocation(
-        userPhone: _userPhone!,
-        latitude: _currentPosition!.latitude,
-        longitude: _currentPosition!.longitude,
-        locationAddress: _currentLocationDetails.split('\n').first,
-      );
-    } catch (e) {
-      print('Error updating location: $e');
     }
   }
 
@@ -493,8 +482,8 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     }
   }
 
-  // Initialize notifications
-  Future<void> _initializeNotifications() async {
+  // Initialize notification listeners
+  Future<void> _initializeNotificationListeners() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -509,37 +498,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
         NavigationService().handleNotificationTap(response);
       },
     );
-  }
-
-  // Show persistent tracking notification
-  Future<void> _showPersistentTrackingNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'tracking_ongoing_channel',
-      'Tracking Ongoing Notifications',
-      channelDescription: 'Persistent notification for active location tracking',
-      importance: Importance.high,
-      priority: Priority.high,
-      ongoing: true, // Makes notification non-dismissable
-      autoCancel: false, // Don't cancel when tapped
-      showWhen: true,
-    );
-
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    await _notifications.show(
-      2, // Notification ID (different from SOS)
-      'Location Tracking Active',
-      'Your location is being shared. Tap to view.',
-      platformChannelSpecifics,
-      payload: 'tracking_active',
-    );
-  }
-
-  // Cancel persistent tracking notification
-  Future<void> _cancelPersistentTrackingNotification() async {
-    await _notifications.cancel(2);
   }
 
   // Show notification
@@ -628,145 +586,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       }
     } catch (e) {
       print('Error requesting background location permission: $e');
-    }
-  }
-
-  // Start background location tracking
-  void _startBackgroundLocationTracking() {
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // Update every 10 meters
-    );
-
-    _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position position) {
-        if (_isTracking && _selectedDestination != null) {
-          // Update current position
-          setState(() {
-            _currentPosition = position;
-          });
-
-          // Get location details
-          _getLocationDetails(position.latitude, position.longitude);
-
-          // Update database
-          _updateLocationInDatabase();
-
-          // Check if reached destination
-          if (_isNearDestination()) {
-            _autoStopTracking();
-          }
-        }
-      },
-      onError: (e) {
-        print('Error in background location tracking: $e');
-      },
-    );
-  }
-
-  // Auto-stop tracking when destination is reached
-  Future<void> _autoStopTracking() async {
-    if (!_isTracking) return;
-
-    try {
-      await _stopTracking();
-
-      _showNotification(
-        title: 'Destination Reached!',
-        body: 'Tracking has been automatically stopped as you reached your destination.',
-      );
-
-      _showMessage('Destination reached! Tracking has been stopped.', Colors.green);
-
-      // Show completion dialog
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('🎉 Destination Reached!'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 50,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'You have successfully reached your destination.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Destination: ${_destinationAddress}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-      }
-    } catch (e) {
-      print('Error auto-stopping tracking: $e');
-    }
-  }
-
-  // Check for existing active tracking session and restore it
-  Future<void> _checkExistingTrackingSession() async {
-    if (_userPhone == null) return;
-
-    try {
-      final activeSession = await _supabaseService.getActiveTrackingSession(_userPhone!);
-
-      if (activeSession != null) {
-        print('Found existing active tracking session');
-
-        // Restore destination if it exists
-        if (activeSession['destination_latitude'] != null &&
-            activeSession['destination_longitude'] != null) {
-          setState(() {
-            _selectedDestination = LatLng(
-              activeSession['destination_latitude'],
-              activeSession['destination_longitude'],
-            );
-            _destinationAddress = activeSession['destination_address'] ?? 'Destination';
-            _selectedAddress = 'Tracking in progress...';
-          });
-        }
-
-        // Set tracking state to active
-        setState(() {
-          _isTracking = true;
-        });
-
-        // Update markers to show restored destination
-        _updateMarkers();
-
-        // Start background tracking again
-        _startBackgroundLocationTracking();
-
-        // Show notification that tracking has been restored
-        _showNotification(
-          title: 'Tracking Restored',
-          body: 'Your previous tracking session has been resumed.',
-        );
-
-        _showMessage('Previous tracking session resumed', Colors.blue);
-      }
-    } catch (e) {
-      print('Error checking existing tracking session: $e');
     }
   }
 
@@ -1331,13 +1150,17 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   void dispose() {
     _mapController?.dispose();
     _searchController.dispose();
-    _trackingTimer?.cancel();
-    _positionStream?.cancel();
 
-    // Stop tracking if active
-    if (_isTracking && _userPhone != null) {
-      _supabaseService.stopTrackingSession(_userPhone!);
-    }
+    // Remove listener from tracking service
+    _trackingService.removeListener(_onTrackingServiceChanged);
+
+    // NOTE: We DO NOT stop tracking here anymore
+    // Tracking continues in the background managed by TrackingService
+    // Tracking will only stop when:
+    // 1. User explicitly stops it
+    // 2. Police stops it remotely
+    // 3. Destination is reached
+
     super.dispose();
   }
 }

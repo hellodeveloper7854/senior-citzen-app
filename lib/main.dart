@@ -5,6 +5,7 @@ import 'screens/under_verification_screen.dart';
 import 'screens/rejected_screen.dart';
 import 'services/supabase_service.dart';
 import 'services/navigation_service.dart';
+import 'services/tracking_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/permission_utils.dart';
 
@@ -35,6 +36,9 @@ Future<void> main() async {
     print('Error requesting permissions on startup: $e');
     // Continue app startup even if permission request fails
   }
+
+  // Initialize global TrackingService
+  await TrackingService().initialize();
 
   runApp(const MyApp());
 }
