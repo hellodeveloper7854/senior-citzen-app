@@ -629,6 +629,37 @@ class SupabaseService {
     }
   }
 
+  // Update destination during active tracking session
+  Future<void> updateTrackingDestination({
+    required String userPhone,
+    required double destinationLatitude,
+    required double destinationLongitude,
+    required String destinationAddress,
+  }) async {
+    try {
+      print('=== Updating Tracking Destination ===');
+      print('User: $userPhone');
+      print('New Destination: $destinationLatitude, $destinationLongitude');
+      print('Destination Address: $destinationAddress');
+
+      await _supabase
+          .from('tracking_sessions')
+          .update({
+            'destination_latitude': destinationLatitude,
+            'destination_longitude': destinationLongitude,
+            'destination_address': destinationAddress,
+            'last_update': DateTime.now().toIso8601String(),
+          })
+          .eq('user_phone', userPhone)
+          .eq('status', 'active');
+
+      print('✓ Destination updated successfully');
+    } catch (e) {
+      print('✗ Error updating tracking destination: $e');
+      // Continue silently - don't break the app for database issues
+    }
+  }
+
   // Stop tracking session
   Future<void> stopTrackingSession(String userPhone) async {
     try {

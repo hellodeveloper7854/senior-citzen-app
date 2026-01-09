@@ -246,6 +246,49 @@ class TrackingService extends ChangeNotifier {
     }
   }
 
+  /// Update destination during active tracking
+  Future<bool> updateDestination({
+    required LatLng newDestination,
+    required String newDestinationAddress,
+  }) async {
+    try {
+      if (!_isTracking || _userPhone == null) {
+        print('TrackingService: Cannot update destination - not tracking');
+        return false;
+      }
+
+      print('=== TrackingService.updateDestination ===');
+      print('New destination: ${newDestination.latitude}, ${newDestination.longitude}');
+      print('New address: $newDestinationAddress');
+
+      // Update local state
+      _selectedDestination = newDestination;
+      _destinationAddress = newDestinationAddress;
+
+      // Update in database
+      await _supabaseService.updateTrackingDestination(
+        userPhone: _userPhone!,
+        destinationLatitude: newDestination.latitude,
+        destinationLongitude: newDestination.longitude,
+        destinationAddress: newDestinationAddress,
+      );
+
+      // Update persistent notification
+      await _showPersistentTrackingNotification();
+
+      // Notify listeners
+      notifyListeners();
+
+      print('✓ TrackingService: Destination updated successfully');
+      return true;
+    } catch (e, stackTrace) {
+      print('✗ TrackingService: Error updating destination');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      return false;
+    }
+  }
+
   /// Start timer to check for duration expiry
   void _startDurationTimer() {
     // Check every minute if duration has expired

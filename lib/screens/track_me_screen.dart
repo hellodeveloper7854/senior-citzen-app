@@ -291,6 +291,17 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
   // Handle map tap to select destination
   void _onMapTap(LatLng position) async {
+    if (_isTracking) {
+      // If tracking is active, update destination
+      final success = await _updateDestinationDuringTracking(position);
+      if (success) {
+        _showMessage('Destination updated successfully', Colors.green);
+      } else {
+        _showMessage('Failed to update destination', Colors.red);
+      }
+      return;
+    }
+
     setState(() {
       _selectedDestination = position;
       _selectedAddress = "Destination selected";
@@ -311,6 +322,43 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     if (!_isTracking) {
       // Show confirmation dialog before starting
       _showStartTrackingDialog();
+    }
+  }
+
+  // Update destination during active tracking
+  Future<bool> _updateDestinationDuringTracking(LatLng newDestination) async {
+    if (_currentPosition == null) return false;
+
+    try {
+      // Get location details for new destination
+      await _getLocationDetails(newDestination.latitude, newDestination.longitude);
+
+      // Update via tracking service
+      final success = await _trackingService.updateDestination(
+        newDestination: newDestination,
+        newDestinationAddress: _destinationAddress.isNotEmpty ? _destinationAddress : 'Updated destination',
+      );
+
+      if (success) {
+        // Recalculate route
+        await _calculateRouteAndDraw();
+
+        // Update UI
+        setState(() {
+          _selectedAddress = 'Destination updated';
+        });
+
+        // Show notification
+        _showNotification(
+          title: 'Destination Updated',
+          body: 'Your tracking destination has been updated to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'new location'}.',
+        );
+      }
+
+      return success;
+    } catch (e) {
+      print('Error updating destination during tracking: $e');
+      return false;
     }
   }
 
@@ -457,6 +505,12 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
   // Clear selected destination
   void _clearDestination() {
+    if (_isTracking) {
+      // If tracking is active, just show a message - destination can be changed but not fully cleared
+      _showMessage('Tap on map to change destination while tracking', Colors.blue);
+      return;
+    }
+
     setState(() {
       _selectedDestination = null;
       _destinationAddress = "";
