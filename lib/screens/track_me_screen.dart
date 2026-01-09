@@ -1141,86 +1141,85 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
             // Location inputs section - hide in fullscreen
             if (!_isFullscreen)
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  children: [
-                    // Current location input
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(color: Colors.green[300]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+              Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Column(
+                      children: [
+                        // Current location input
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(25),
+                            border: Border.all(color: Colors.green[300]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.my_location, color: Colors.green[600], size: 24),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _currentAddress,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: _isLoadingLocation ? Colors.grey[400] : Colors.green[700],
-                                    fontWeight: FontWeight.w600,
+                              Row(
+                                children: [
+                                  Icon(Icons.my_location, color: Colors.green[600], size: 24),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _currentAddress,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: _isLoadingLocation ? Colors.grey[400] : Colors.green[700],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  if (_isLoadingLocation)
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                      ),
+                                    )
+                                  else if (_currentPosition == null && !_isLoadingLocation)
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: Icon(Icons.refresh, color: Colors.green[600], size: 20),
+                                      onPressed: _getCurrentLocation,
+                                    ),
+                                ],
                               ),
-                              if (_isLoadingLocation)
-                                SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                              if (_currentLocationDetails.isNotEmpty && !_isLoadingLocation)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4, left: 36),
+                                  child: Text(
+                                    _currentLocationDetails,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.green[600],
+                                    ),
                                   ),
-                                )
-                              else if (_currentPosition == null && !_isLoadingLocation)
-                                IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  icon: Icon(Icons.refresh, color: Colors.green[600], size: 20),
-                                  onPressed: _getCurrentLocation,
                                 ),
                             ],
                           ),
-                          if (_currentLocationDetails.isNotEmpty && !_isLoadingLocation)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4, left: 36),
-                              child: Text(
-                                _currentLocationDetails,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.green[600],
-                                ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Search bar for destination
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                            border: Border.all(color: Colors.grey[300]!),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Search bar for destination
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(color: Colors.grey[300]!),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                          child: Row(
                             children: [
                               const SizedBox(width: 16),
                               Icon(Icons.search, color: Colors.grey[600], size: 24),
@@ -1266,96 +1265,98 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                                 ),
                             ],
                           ),
-                          // Place predictions dropdown
-                          if (_showPredictions && _placePredictions.isNotEmpty)
-                            Container(
-                              constraints: const BoxConstraints(maxHeight: 200),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: const BorderRadius.only(
-                                  bottomLeft: Radius.circular(12),
-                                  bottomRight: Radius.circular(12),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: _placePredictions.length,
-                                itemBuilder: (context, index) {
-                                  final prediction = _placePredictions[index];
-                                  return ListTile(
-                                    leading: Icon(Icons.location_on, color: Colors.red[600], size: 20),
-                                    title: Text(
-                                      prediction['description'] ?? 'Unknown place',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    onTap: () {
-                                      _selectPlaceFromPrediction(prediction);
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Selected destination display (simplified)
-                    if (_selectedDestination != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red[300]!),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.location_on, color: Colors.red[600], size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _isTracking ? 'Tracking to:' : 'Selected:',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.red[700],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (_destinationAddress.isNotEmpty)
-                                    Text(
-                                      _destinationAddress,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.red[600],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
+                        const SizedBox(height: 8),
+                        // Selected destination display (simplified)
+                        if (_selectedDestination != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red[300]!),
                             ),
-                            if (!_isTracking)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Icon(Icons.clear, color: Colors.red[600], size: 18),
-                                onPressed: _clearDestination,
-                              ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on, color: Colors.red[600], size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _isTracking ? 'Tracking to:' : 'Selected:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.red[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (_destinationAddress.isNotEmpty)
+                                        Text(
+                                          _destinationAddress,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.red[600],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (!_isTracking)
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: Icon(Icons.clear, color: Colors.red[600], size: 18),
+                                    onPressed: _clearDestination,
+                                  ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Place predictions dropdown - positioned as overlay
+                  if (_showPredictions && _placePredictions.isNotEmpty)
+                    Positioned(
+                      top: 130, // Adjust based on search bar position
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
                           ],
                         ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _placePredictions.length,
+                          itemBuilder: (context, index) {
+                            final prediction = _placePredictions[index];
+                            return ListTile(
+                              leading: Icon(Icons.location_on, color: Colors.red[600], size: 20),
+                              title: Text(
+                                prediction['description'] ?? 'Unknown place',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              onTap: () {
+                                _selectPlaceFromPrediction(prediction);
+                              },
+                            );
+                          },
+                        ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
 
             // Map section
