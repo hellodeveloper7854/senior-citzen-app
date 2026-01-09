@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'dart:math';
 import 'supabase_service.dart';
+import 'navigation_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Global service to manage persistent tracking across the entire app
@@ -70,7 +71,13 @@ class TrackingService extends ChangeNotifier {
       android: initializationSettingsAndroid,
     );
 
-    await _notifications.initialize(initializationSettings);
+    await _notifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap using NavigationService
+        NavigationService().handleNotificationTap(response);
+      },
+    );
   }
 
   /// Check for existing active tracking session and restore it
