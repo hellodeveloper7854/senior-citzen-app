@@ -39,6 +39,8 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   List<Location> _searchResults = [];
   bool _isSearching = false;
   bool _isFullscreen = false;
+  List<Map<String, dynamic>> _placePredictions = []; // For place predictions
+  bool _showPredictions = false;
 
   // Tracking related variables
   final SupabaseService _supabaseService = SupabaseService();
@@ -756,6 +758,109 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  // Search for location predictions using geocoding
+  Future<void> _searchPlacePredictions(String query) async {
+    if (query.isEmpty) return;
+
+    try {
+      setState(() {
+        _isSearching = true;
+      });
+
+      // Use geocoding to search for places
+      List<Location> locations = await locationFromAddress(query);
+
+      // Create predictions from locations
+      List<Map<String, dynamic>> predictions = [];
+      for (var location in locations) {
+        // Get placemarks to get formatted address
+        List<Placemark> placemarks = await placemarkFromCoordinates(location.latitude, location.longitude);
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks.first;
+          String description = _formatAddress(place);
+          predictions.add({
+            'description': description,
+            'latitude': location.latitude,
+            'longitude': location.longitude,
+            'place': place,
+          });
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _placePredictions = predictions.take(5).toList(); // Limit to 5 results
+          _showPredictions = predictions.isNotEmpty;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      print('Error searching places: $e');
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+          _showPredictions = false;
+        });
+      }
+    }
+  }
+
+  // Select place from prediction list
+  Future<void> _selectPlaceFromPrediction(Map<String, dynamic> prediction) async {
+    try {
+      final latitude = prediction['latitude'] as double;
+      final longitude = prediction['longitude'] as double;
+      final position = LatLng(latitude, longitude);
+
+      // Clear search
+      _searchController.clear();
+      setState(() {
+        _showPredictions = false;
+        _placePredictions = [];
+      });
+
+      // If tracking is active, update destination
+      if (_isTracking) {
+        await _updateDestinationDuringTracking(position);
+      } else {
+        // Set as new destination
+        setState(() {
+          _selectedDestination = position;
+          _selectedAddress = "Destination selected";
+          _isCalculatingRoute = true;
+        });
+
+        _getLocationDetails(latitude, longitude);
+        _updateMarkers();
+
+        // Calculate route
+        await _calculateRouteAndDraw();
+
+        setState(() {
+          _isCalculatingRoute = false;
+        });
+
+        // Show confirmation dialog
+        _showStartTrackingDialog();
+      }
+    } catch (e) {
+      print('Error selecting place: $e');
+      _showMessage('Failed to select location', Colors.red);
+    }
+  }
+
+  // Format address from placemark
+  String _formatAddress(Placemark place) {
+    List<String> parts = [];
+    if (place.name?.isNotEmpty == true) parts.add(place.name!);
+    if (place.street?.isNotEmpty == true) parts.add(place.street!);
+    if (place.locality?.isNotEmpty == true) parts.add(place.locality!);
+    if (place.administrativeArea?.isNotEmpty == true) parts.add(place.administrativeArea!);
+    if (place.country?.isNotEmpty == true) parts.add(place.country!);
+
+    return parts.isNotEmpty ? parts.join(', ') : 'Unknown location';
+  }
+
   // Stop tracking session
   Future<void> _stopTracking() async {
     try {
@@ -958,7 +1063,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                 ],
               ),
             ),
-            // Search bar - commented out for now
             // Container(
             //   padding: const EdgeInsets.all(16),
             //   child: Column(
@@ -1099,54 +1203,157 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Selected destination input
+                    // Search bar for destination
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(25),
-                        border: Border.all(color: Colors.red[300]!),
+                        border: Border.all(color: Colors.grey[300]!),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.location_on, color: Colors.red[600], size: 24),
+                              const SizedBox(width: 16),
+                              Icon(Icons.search, color: Colors.grey[600], size: 24),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  _selectedAddress,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.red[700],
-                                    fontWeight: FontWeight.w600,
+                                child: TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    hintText: _isTracking
+                                        ? 'Search new destination to update'
+                                        : 'Search destination or tap on map',
+                                    hintStyle: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
+                                  onChanged: (value) {
+                                    if (value.isNotEmpty) {
+                                      _searchPlacePredictions(value);
+                                    } else {
+                                      setState(() {
+                                        _showPredictions = false;
+                                        _placePredictions = [];
+                                      });
+                                    }
+                                  },
                                 ),
                               ),
-                              if (_selectedDestination != null)
+                              if (_searchController.text.isNotEmpty)
                                 IconButton(
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
-                                  icon: Icon(Icons.clear, color: Colors.red[600], size: 20),
-                                  onPressed: _clearDestination,
+                                  icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _showPredictions = false;
+                                      _placePredictions = [];
+                                    });
+                                  },
                                 ),
                             ],
                           ),
-                          if (_destinationAddress.isNotEmpty && _selectedDestination != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4, left: 36),
-                              child: Text(
-                                _destinationAddress,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.red[600],
+                          // Place predictions dropdown
+                          if (_showPredictions && _placePredictions.isNotEmpty)
+                            Container(
+                              constraints: const BoxConstraints(maxHeight: 200),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(12),
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _placePredictions.length,
+                                itemBuilder: (context, index) {
+                                  final prediction = _placePredictions[index];
+                                  return ListTile(
+                                    leading: Icon(Icons.location_on, color: Colors.red[600], size: 20),
+                                    title: Text(
+                                      prediction['description'] ?? 'Unknown place',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    onTap: () {
+                                      _selectPlaceFromPrediction(prediction);
+                                    },
+                                  );
+                                },
                               ),
                             ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    // Selected destination display (simplified)
+                    if (_selectedDestination != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red[300]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, color: Colors.red[600], size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isTracking ? 'Tracking to:' : 'Selected:',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red[700],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (_destinationAddress.isNotEmpty)
+                                    Text(
+                                      _destinationAddress,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.red[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (!_isTracking)
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(Icons.clear, color: Colors.red[600], size: 18),
+                                onPressed: _clearDestination,
+                              ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
