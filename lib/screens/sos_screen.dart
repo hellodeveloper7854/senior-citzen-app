@@ -806,29 +806,35 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                 // 2.1 Header Area (Logo, Avatars, Calling Text)
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.only(top: screenHeight * 0.01, bottom: screenHeight * 0.025),
+                  padding: EdgeInsets.only(top: screenHeight * 0.01, bottom: screenHeight * 0.015),
                   // Background will be the white circle at the top
                   child: Column(
                     children: [
-                      // Logo and Title
+                      // Header with back button and logo on same row
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02, vertical: 4),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Image.asset(
-                              _logoAssetPath,
-                              width: screenWidth * 0.2,
-                              height: screenWidth * 0.2,
-                              fit: BoxFit.contain,
+                            // Back button
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                              onPressed: () => Navigator.pop(context),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             ),
                             SizedBox(width: screenWidth * 0.02),
-
+                            // Logo
+                            Image.asset(
+                              _logoAssetPath,
+                              width: screenWidth * 0.15,
+                              height: screenWidth * 0.15,
+                              fit: BoxFit.contain,
+                            ),
                           ],
                         ),
                       ),
 
-                      SizedBox(height: screenHeight * 0.07),
+                      SizedBox(height: screenHeight * 0.04),
 
                       // Stacked Avatars
                       _buildStackedAvatars(),

@@ -48,18 +48,32 @@ class HelplineScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-
-
-                  SizedBox(height: screenHeight * 0.3,),
-                  Text(
-                    "Helpline Numbers",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: screenWidth * 0.05,
-                      color: Colors.black87,
+                  SizedBox(height: screenHeight * 0.02,),
+                  // Header with back button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        Expanded(
+                          child: Text(
+                            "Helpline Numbers",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: screenWidth * 0.05,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.12), // Balance the back button
+                      ],
                     ),
                   ),
-                  SizedBox(height: screenHeight * 0.05),
+                  SizedBox(height: screenHeight * 0.03),
 
                   // --- First Card: Ask for help ---
                   GestureDetector(

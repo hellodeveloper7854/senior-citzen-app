@@ -335,12 +335,29 @@ class _SelectEmergencyContactScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    'Emergency Contact',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.06,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937),
+                  SizedBox(height: screenHeight * 0.02),
+                  // Header with back button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Emergency Contact',
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.06,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(width: 48), // Balance the back button
+                      ],
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.01),

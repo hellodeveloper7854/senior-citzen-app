@@ -66,13 +66,29 @@ class NationalHelplineScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 120),
-                  const Text(
-                    "National Helpline",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: Colors.black87,
+                  const SizedBox(height: 20),
+                  // Header with back button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            "National Helpline",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(width: 48), // Balance the back button
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),

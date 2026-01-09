@@ -262,26 +262,32 @@ class RecordScreenState extends State<RecordScreen> {
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                SizedBox(height:60),
-                // // Custom Header
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //   children: [
-                //     IconButton(
-                //       icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937), size: 28),
-                //       onPressed: () => Navigator.pop(context),
-                //     ),
-                //     const Text(
-                //       'Record',
-                //       style: TextStyle(
-                //         color: Color(0xFF1F2937),
-                //         fontSize: 20,
-                //         fontWeight: FontWeight.w600,
-                //       ),
-                //     ),
-                //     const SizedBox(width: 48), // To balance the row
-                //   ],
-                // ),
+                SizedBox(height: 20),
+                // Custom Header with back button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937), size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Record Complaints',
+                          style: TextStyle(
+                            color: Color(0xFF1F2937),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: 48), // Balance the back button
+                    ],
+                  ),
+                ),
+                SizedBox(height: 20),
 
                 // Main content area
                 Expanded(

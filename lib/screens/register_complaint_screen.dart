@@ -171,21 +171,38 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
 
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.08),
-                    const Text(
-                      "Register a complaint",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                        color: Colors.black87,
+                    // Header with back button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const Expanded(
+                            child: Text(
+                              "Register a complaint",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                color: Colors.black87,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(width: 48), // Balance the back button
+                        ],
                       ),
                     ),
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.06),
+                    const SizedBox(height: 12),
 
                     // Title
                     TextFormField(
@@ -209,13 +226,13 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                             vertical: 14, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Complaint Description
                     TextFormField(
                       controller: _descriptionController,
                       textAlignVertical: TextAlignVertical.center,
-                      maxLines: 6,
+                      maxLines: 4,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please describe your complaint';
@@ -234,10 +251,10 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            vertical: 16, horizontal: 12),
+                            vertical: 12, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Date
                     TextFormField(
@@ -255,10 +272,10 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 12),
+                            vertical: 12, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Time
                     TextFormField(
@@ -276,16 +293,16 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 12),
+                            vertical: 12, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Location / Address
                     TextFormField(
                       controller: _locationController,
                       textAlignVertical: TextAlignVertical.center,
-                      maxLines: 4,
+                      maxLines: 3,
                       decoration: InputDecoration(
                         fillColor: Colors.white,
                         filled: true,
@@ -295,15 +312,15 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                           borderSide: BorderSide.none,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 12),
+                            vertical: 12, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Submit Button
                     SizedBox(
                       width: double.infinity,
-                      height: 44,
+                      height: 40,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isSubmitting ? Colors.grey : Colors.black,
@@ -329,12 +346,12 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                               ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
                     // Check Complaint Status Button
                     SizedBox(
                       width: double.infinity,
-                      height: 44,
+                      height: 40,
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.black87),
@@ -358,12 +375,12 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
                     // Back Button
                     SizedBox(
                       width: double.infinity,
-                      height: 44,
+                      height: 40,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,

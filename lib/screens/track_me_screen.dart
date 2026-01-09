@@ -793,7 +793,18 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 20), // Added padding on top
+            // Header with back button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
             // Search bar - commented out for now
             // Container(
             //   padding: const EdgeInsets.all(16),
