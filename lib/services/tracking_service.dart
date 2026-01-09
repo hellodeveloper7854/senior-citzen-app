@@ -24,10 +24,12 @@ class TrackingService extends ChangeNotifier {
   String _destinationAddress = "";
   int? _trackingDurationMinutes; // Duration in minutes (null = indefinite/destination-based)
   DateTime? _sessionEndTime; // When the tracking should auto-stop
+  DateTime? _sessionStartTime; // When the tracking session started
 
   // Background tracking
   Timer? _trackingTimer;
   Timer? _durationTimer; // Timer to check duration expiry
+  Timer? _continuationCheckTimer; // Timer to check if user wants to continue
   StreamSubscription<Position>? _positionStream;
   final SupabaseService _supabaseService = SupabaseService();
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -41,6 +43,7 @@ class TrackingService extends ChangeNotifier {
   String get currentLocationDetails => _currentLocationDetails;
   int? get trackingDurationMinutes => _trackingDurationMinutes;
   DateTime? get sessionEndTime => _sessionEndTime;
+  DateTime? get sessionStartTime => _sessionStartTime;
 
   /// Initialize the tracking service
   Future<void> initialize() async {
@@ -149,6 +152,7 @@ class TrackingService extends ChangeNotifier {
       _selectedDestination = destination;
       _destinationAddress = destinationAddress ?? "";
       _trackingDurationMinutes = durationMinutes;
+      _sessionStartTime = DateTime.now(); // Record session start time
 
       // Calculate session end time if duration is provided
       if (durationMinutes != null && durationMinutes > 0) {
@@ -180,6 +184,11 @@ class TrackingService extends ChangeNotifier {
       // Start background location tracking for continuous monitoring
       _startBackgroundLocationTracking();
 
+      // Start continuation check timer for indefinite tracking without destination
+      if (destination == null && durationMinutes == null) {
+        _startContinuationCheckTimer();
+      }
+
       // Show persistent notification
       await _showPersistentTrackingNotification();
 
@@ -206,6 +215,10 @@ class TrackingService extends ChangeNotifier {
       _durationTimer?.cancel();
       _durationTimer = null;
 
+      // Cancel continuation check timer
+      _continuationCheckTimer?.cancel();
+      _continuationCheckTimer = null;
+
       // Stop background location tracking
       _positionStream?.cancel();
       _positionStream = null;
@@ -222,6 +235,7 @@ class TrackingService extends ChangeNotifier {
       _destinationAddress = "";
       _trackingDurationMinutes = null;
       _sessionEndTime = null;
+      _sessionStartTime = null;
       notifyListeners();
 
       print('TrackingService: Tracking stopped successfully');
@@ -241,6 +255,49 @@ class TrackingService extends ChangeNotifier {
         _autoStopTracking(reason: 'duration');
       }
     });
+  }
+
+  /// Start timer to check if user wants to continue tracking (for indefinite tracking without destination)
+  void _startContinuationCheckTimer() {
+    // Check every 15 minutes (after initial 15 minutes)
+    _continuationCheckTimer = Timer.periodic(const Duration(minutes: 15), (timer) {
+      if (_sessionStartTime != null) {
+        final duration = DateTime.now().difference(_sessionStartTime!);
+        print('TrackingService: Checking continuation - tracking for ${duration.inMinutes} minutes');
+
+        // Show continuation notification
+        _showContinuationNotification();
+      }
+    });
+  }
+
+  /// Show notification asking if user wants to continue tracking
+  Future<void> _showContinuationNotification() async {
+    final duration = DateTime.now().difference(_sessionStartTime!);
+    final minutes = duration.inMinutes;
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'tracking_continuation_channel',
+      'Tracking Continuation',
+      channelDescription: 'Notifications for tracking continuation checks',
+      importance: Importance.high,
+      priority: Priority.high,
+      ongoing: false,
+      autoCancel: true,
+      showWhen: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _notifications.show(
+      3, // Different notification ID
+      'Still Sharing Location?',
+      'You have been sharing your location for $minutes minutes. Tap to manage.',
+      platformChannelSpecifics,
+      payload: 'tracking_continuation',
+    );
   }
 
   /// Update location in database
