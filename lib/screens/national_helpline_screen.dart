@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
+import '../services/supabase_service.dart';
 
-class NationalHelplineScreen extends StatelessWidget {
+class NationalHelplineScreen extends StatefulWidget {
   const NationalHelplineScreen({super.key});
 
-  final List<Map<String, String>> helplines = const [
-    {"title": "Police", "number": "112"},
-    {"title": "Ambulance", "number": "108"},
-    {"title": "Women Helpline", "number": "1091"},
-    {"title": "Senior Citizen", "number": "1090"},
-    {"title": "Fire", "number": "101"},
-    {"title": "National Helpline", "number": "14567"},
-  ];
+  @override
+  State<NationalHelplineScreen> createState() => _NationalHelplineScreenState();
+}
+
+class _NationalHelplineScreenState extends State<NationalHelplineScreen> {
+  final SupabaseService _supabaseService = SupabaseService();
+  List<Map<String, dynamic>> _helplines = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHelplines();
+  }
+
+  Future<void> _loadHelplines() async {
+    final helplines = await _supabaseService.getNationalHelplines();
+    if (mounted) {
+      setState(() {
+        _helplines = helplines;
+        _isLoading = false;
+      });
+    }
+  }
 
   // Function to initiate a phone call
   Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
@@ -104,19 +121,26 @@ class NationalHelplineScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
 
-                  // Helpline Buttons List
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: helplines.length,
-                      // Removed NeverScrollableScrollPhysics if you want it to scroll,
-                      // but keeping it for the fixed layout if all fit.
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final item = helplines[index];
+                  // Show loading indicator or helpline list
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _helplines.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No helpline numbers available',
+                                style: TextStyle(color: Colors.black54),
+                              ),
+                            )
+                          : Expanded(
+                              child: ListView.separated(
+                                itemCount: _helplines.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final item = _helplines[index];
 
                         // Wrap the container in InkWell to make it tappable and show ripple effect
                         return InkWell(
-                          onTap: () => _makePhoneCall(context, item["number"]!),
+                          onTap: () => _makePhoneCall(context, item['phone_number'] ?? ''),
                           borderRadius: BorderRadius.circular(25),
                           child: Container(
                             height: 60,
@@ -137,7 +161,7 @@ class NationalHelplineScreen extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        item["title"]!,
+                                        item['title'] ?? '',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 16,
@@ -145,7 +169,7 @@ class NationalHelplineScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        item["number"]!,
+                                        item['phone_number'] ?? '',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w500,
                                           fontSize: 13,

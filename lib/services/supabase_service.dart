@@ -666,4 +666,40 @@ class SupabaseService {
 
     return response;
   }
+
+  // ============================================================================
+  // HELPLINE METHODS
+  // ============================================================================
+
+  // Get all national helpline numbers
+  Future<List<Map<String, dynamic>>> getNationalHelplines() async {
+    try {
+      final response = await _supabase
+          .from('national_helpline')
+          .select()
+          .eq('is_active', true)
+          .order('display_order', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching national helplines: $e');
+      return [];
+    }
+  }
+
+  // Get all hospital contact numbers
+  Future<List<Map<String, dynamic>>> getHospitalContacts() async {
+    try {
+      final response = await _supabase
+          .from('hospital_contacts')
+          .select()
+          .eq('is_active', true)
+          .order('display_order', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching hospital contacts: $e');
+      return [];
+    }
+  }
 }

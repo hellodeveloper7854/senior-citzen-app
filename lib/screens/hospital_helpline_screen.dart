@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/supabase_service.dart';
 
-class HospitalHelplineScreen extends StatelessWidget {
+class HospitalHelplineScreen extends StatefulWidget {
   const HospitalHelplineScreen({super.key});
 
-  final List<Map<String, String>> hospitals = const [
-    {"name": "Civil Hospital Thane", "number": "022-25472582"},
-    {"name": "Chhatrapati Shivaji Maharaj Hospital (Kalwa)", "number": "+91-22-25343"},
-    {"name": "Central Hospital Ulhasnagar", "number": "0251 270 5505"},
-    {"name": "ESIC Hospital (Wagle Estate)", "number": "+91-22-69074777"},
-    {"name": "KDMC Hospital Dombivli (Municipal)", "number": "0251-2480445"},
-    {"name": "Indira Gandhi Hospital Bhiwandi", "number": "02522 226 282"},
-    {"name": "Ulhasnagar Municipal Corporation Super Speciality Hospital", "number": "9872 29960"},
-    {"name": "Kalyan Dombivali Municipal Clinic", "number": "093 96233"},
-    {"name": "Thane Mental Hospital (Neral/Thane)", "number": " - "},
-  ];
+  @override
+  State<HospitalHelplineScreen> createState() => _HospitalHelplineScreenState();
+}
+
+class _HospitalHelplineScreenState extends State<HospitalHelplineScreen> {
+  final SupabaseService _supabaseService = SupabaseService();
+  List<Map<String, dynamic>> _hospitals = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHospitals();
+  }
+
+  Future<void> _loadHospitals() async {
+    final hospitals = await _supabaseService.getHospitalContacts();
+    if (mounted) {
+      setState(() {
+        _hospitals = hospitals;
+        _isLoading = false;
+      });
+    }
+  }
 
   Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
     if (phoneNumber.trim() == "-" || phoneNumber.trim().isEmpty) {
@@ -109,17 +123,26 @@ class HospitalHelplineScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
 
-                  // Hospital Buttons List
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: hospitals.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final hospital = hospitals[index];
+                  // Show loading indicator or hospital list
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _hospitals.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No hospital contacts available',
+                                style: TextStyle(color: Colors.black54),
+                              ),
+                            )
+                          : Expanded(
+                              child: ListView.separated(
+                                itemCount: _hospitals.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final hospital = _hospitals[index];
 
-                        return InkWell(
-                          onTap: () => _makePhoneCall(context, hospital["number"]!),
-                          borderRadius: BorderRadius.circular(25),
+                                  return InkWell(
+                                    onTap: () => _makePhoneCall(context, hospital['phone_number'] ?? ''),
+                                    borderRadius: BorderRadius.circular(25),
                           child: Container(
                             height: 60,
                             decoration: BoxDecoration(
@@ -138,7 +161,7 @@ class HospitalHelplineScreen extends StatelessWidget {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          hospital["name"]!,
+                                          hospital['hospital_name'] ?? '',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 14,
@@ -148,7 +171,7 @@ class HospitalHelplineScreen extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
-                                          hospital["number"]!,
+                                          hospital['phone_number'] ?? '',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w500,
                                             fontSize: 13,
