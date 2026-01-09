@@ -9,6 +9,7 @@ import 'dart:math';
 import '../services/supabase_service.dart';
 import '../services/navigation_service.dart';
 import '../services/tracking_service.dart';
+import '../services/route_service.dart';
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({super.key});
@@ -42,6 +43,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Tracking related variables
   final SupabaseService _supabaseService = SupabaseService();
   final TrackingService _trackingService = TrackingService();
+  final RouteService _routeService = RouteService();
   String? _userPhone;
   String? _userName;
   String _emergencyPhoneNumber = '9326520525'; // Default fallback number
@@ -49,6 +51,10 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
   // Time-based tracking
   int? _selectedDurationMinutes; // null = indefinite tracking
+
+  // Route information
+  RouteResult? _routeResult;
+  bool _isCalculatingRoute = false;
 
   // Background tracking and notification
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -78,6 +84,17 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       _destinationAddress = _trackingService.destinationAddress;
       _selectedAddress = 'Tracking in progress...';
       _updateMarkers();
+
+      // Calculate route if tracking is being restored
+      if (_trackingService.isTracking) {
+        // Delay route calculation until we have current position
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_currentPosition != null && _selectedDestination != null) {
+            _calculateRouteAndDraw();
+          }
+        });
+      }
+
       _drawRoute();
     }
   }
@@ -122,6 +139,11 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
         // Update markers with current location
         _updateMarkers();
+
+        // If tracking was restored with destination, calculate route now that we have position
+        if (_isTracking && _selectedDestination != null && _routeResult == null) {
+          _calculateRouteAndDraw();
+        }
 
         // Move map camera to current location once it's obtained
         if (_mapController != null) {
@@ -191,17 +213,20 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   void _updateMarkers() {
     Set<Marker> newMarkers = {};
 
-    // Add current location marker
+    // Add current location marker with custom icon for tracking
     if (_currentPosition != null) {
       newMarkers.add(
         Marker(
           markerId: const MarkerId('currentLocation'),
           position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           infoWindow: InfoWindow(
-            title: 'Your Location',
+            title: _isTracking ? 'Your Location (Moving)' : 'Your Location',
             snippet: _currentLocationDetails.split('\n').first,
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            _isTracking ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueGreen,
+          ),
+          rotation: _isTracking ? 45.0 : 0.0, // Rotate marker when tracking to show movement
         ),
       );
     }
@@ -229,19 +254,34 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Draw route between current location and destination
   void _drawRoute() {
     if (_currentPosition != null && _selectedDestination != null) {
-      setState(() {
-        _polylines = {
-          Polyline(
-            polylineId: const PolylineId('route'),
-            color: Colors.blue,
-            width: 4,
-            points: [
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              _selectedDestination!,
-            ],
-          ),
-        };
-      });
+      if (_routeResult != null) {
+        // Use calculated route
+        final polyline = _routeService.createPolyline(
+          id: 'route',
+          points: _routeResult!.routePoints,
+          color: Colors.blue,
+          width: 5,
+        );
+
+        setState(() {
+          _polylines = {polyline};
+        });
+      } else {
+        // Fallback to straight line
+        setState(() {
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              color: Colors.blue,
+              width: 4,
+              points: [
+                LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                _selectedDestination!,
+              ],
+            ),
+          };
+        });
+      }
     } else {
       setState(() {
         _polylines = {};
@@ -250,20 +290,49 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   }
 
   // Handle map tap to select destination
-  void _onMapTap(LatLng position) {
+  void _onMapTap(LatLng position) async {
     setState(() {
       _selectedDestination = position;
       _selectedAddress = "Destination selected";
+      _isCalculatingRoute = true;
     });
 
     _getLocationDetails(position.latitude, position.longitude);
     _updateMarkers();
-    _drawRoute();
+
+    // Calculate route and ETA
+    await _calculateRouteAndDraw();
+
+    setState(() {
+      _isCalculatingRoute = false;
+    });
 
     // Auto-start tracking when destination is selected
     if (!_isTracking) {
       // Show confirmation dialog before starting
       _showStartTrackingDialog();
+    }
+  }
+
+  // Calculate route and draw it on the map
+  Future<void> _calculateRouteAndDraw() async {
+    if (_currentPosition == null || _selectedDestination == null) return;
+
+    try {
+      final routeResult = await _routeService.calculateRoute(
+        origin: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        destination: _selectedDestination!,
+        travelMode: TravelMode.driving,
+      );
+
+      setState(() {
+        _routeResult = routeResult;
+      });
+
+      // Draw route on map
+      _drawRoute();
+    } catch (e) {
+      print('Error calculating route: $e');
     }
   }
 
@@ -393,6 +462,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       _destinationAddress = "";
       _selectedAddress = "Tap map or search to select destination";
       _polylines = {};
+      _routeResult = null;
     });
     _updateMarkers();
   }
@@ -404,17 +474,45 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
         _isTracking = _trackingService.isTracking;
         _selectedDestination = _trackingService.selectedDestination;
         _destinationAddress = _trackingService.destinationAddress;
+        _currentPosition = _trackingService.currentPosition;
 
         if (_isTracking && _selectedDestination != null) {
           _selectedAddress = 'Tracking in progress...';
+          // Recalculate route with new position
+          _recalculateRoute();
         } else if (!_isTracking) {
           _selectedAddress = "Tap map or search to select destination";
         }
 
         // Update markers and route
         _updateMarkers();
-        _drawRoute();
       });
+
+      // Draw route after setState to ensure we have all the data
+      if (_isTracking && _selectedDestination != null) {
+        _drawRoute();
+      }
+    }
+  }
+
+  // Recalculate route when position changes
+  Future<void> _recalculateRoute() async {
+    if (_currentPosition == null || _selectedDestination == null) return;
+
+    try {
+      final routeResult = await _routeService.calculateRoute(
+        origin: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        destination: _selectedDestination!,
+        travelMode: TravelMode.driving,
+      );
+
+      if (mounted) {
+        setState(() {
+          _routeResult = routeResult;
+        });
+      }
+    } catch (e) {
+      print('Error recalculating route: $e');
     }
   }
 
@@ -1070,6 +1168,115 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       polylines: _polylines,
                       onTap: _onMapTap,
                     ),
+                    // Floating route information card - positioned at bottom right
+                    if (_routeResult != null && _selectedDestination != null)
+                      Positioned(
+                        bottom: 16, // Position from bottom
+                        right: 16, // Position from right
+                        left: null, // Remove left constraint
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min, // Only take needed width
+                            children: [
+                              // Distance
+                              Row(
+                                children: [
+                                  Icon(Icons.straighten, color: Colors.blue[700], size: 20),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _routeResult!.distanceText,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                      Text(
+                                        'Distance',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              // Vertical divider
+                              Container(
+                                height: 30,
+                                width: 1,
+                                color: Colors.grey[300],
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              // Estimated time
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time, color: Colors.blue[700], size: 20),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _routeResult!.durationText,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                      Text(
+                                        'Est. Time',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              // Loading indicator
+                              if (_isCalculatingRoute)
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Updating...',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     // Fullscreen button (top right)
                     Positioned(
                       top: 10,
