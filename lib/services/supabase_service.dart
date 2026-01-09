@@ -549,13 +549,28 @@ class SupabaseService {
     double? destinationLatitude,
     double? destinationLongitude,
     String? destinationAddress,
+    int? durationMinutes, // New parameter for time-based tracking (null = until destination/manual stop)
   }) async {
     try {
+      print('=== Starting Tracking Session ===');
+      print('User: $userPhone ($userName)');
+      print('Location: $latitude, $longitude');
+      print('Destination: ${destinationLatitude ?? "None"}');
+      print('Duration: ${durationMinutes ?? "Indefinite"} minutes');
+
       // Get user's police station from profile
       final userProfile = await getUserProfileByPhone(userPhone);
       final policeStation = userProfile?['police_station'] ?? 'Unknown';
 
-      await _supabase.from('tracking_sessions').insert({
+      // Calculate session end time if duration is provided
+      String? sessionEndTime;
+      if (durationMinutes != null && durationMinutes > 0) {
+        final endTime = DateTime.now().add(Duration(minutes: durationMinutes));
+        sessionEndTime = endTime.toIso8601String();
+        print('Session will end at: $sessionEndTime');
+      }
+
+      final sessionData = {
         'user_phone': userPhone,
         'user_name': userName,
         'police_station': policeStation,
@@ -569,14 +584,24 @@ class SupabaseService {
         'current_longitude': longitude,
         'location_address': locationAddress,
         'session_start': DateTime.now().toIso8601String(),
+        'session_end': sessionEndTime, // New field for time-based tracking
+        'tracking_duration_minutes': durationMinutes, // New field to store duration
         'last_update': DateTime.now().toIso8601String(),
         'status': 'active',
-      });
-      print('Tracking session started successfully for $userPhone');
-    } catch (e) {
-      print('Error starting tracking session: $e');
+      };
+
+      print('Inserting data: ${sessionData.keys.toList()}');
+
+      final response = await _supabase.from('tracking_sessions').insert(sessionData);
+
+      print('✓ Tracking session started successfully for $userPhone');
+      print('Response: $response');
+    } catch (e, stackTrace) {
+      print('✗ Error starting tracking session: $e');
+      print('Stack trace: $stackTrace');
       // Continue with tracking even if database fails
       // This ensures the app works even if tables don't exist yet
+      rethrow; // Re-throw to let the caller know about the error
     }
   }
 

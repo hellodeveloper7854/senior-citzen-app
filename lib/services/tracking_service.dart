@@ -22,9 +22,12 @@ class TrackingService extends ChangeNotifier {
   String _currentLocationDetails = "";
   LatLng? _selectedDestination;
   String _destinationAddress = "";
+  int? _trackingDurationMinutes; // Duration in minutes (null = indefinite/destination-based)
+  DateTime? _sessionEndTime; // When the tracking should auto-stop
 
   // Background tracking
   Timer? _trackingTimer;
+  Timer? _durationTimer; // Timer to check duration expiry
   StreamSubscription<Position>? _positionStream;
   final SupabaseService _supabaseService = SupabaseService();
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -36,6 +39,8 @@ class TrackingService extends ChangeNotifier {
   LatLng? get selectedDestination => _selectedDestination;
   String get destinationAddress => _destinationAddress;
   String get currentLocationDetails => _currentLocationDetails;
+  int? get trackingDurationMinutes => _trackingDurationMinutes;
+  DateTime? get sessionEndTime => _sessionEndTime;
 
   /// Initialize the tracking service
   Future<void> initialize() async {
@@ -123,29 +128,48 @@ class TrackingService extends ChangeNotifier {
   Future<bool> startTracking({
     required Position currentPosition,
     required String locationAddress,
-    required LatLng destination,
-    required String destinationAddress,
+    LatLng? destination, // Now optional - can track without destination
+    String? destinationAddress,
+    int? durationMinutes, // Duration in minutes (15, 30, 60, 120) or null for indefinite
   }) async {
     try {
+      print('=== TrackingService.startTracking ===');
+      print('User phone: $_userPhone');
+      print('User name: $_userName');
+      print('Destination: ${destination ?? "None"}');
+      print('Duration: $durationMinutes minutes');
+
       if (_userPhone == null) {
-        print('TrackingService: Cannot start tracking - user phone not available');
+        print('TrackingService: ✗ Cannot start tracking - user phone not available');
         return false;
       }
 
       _currentPosition = currentPosition;
       _currentLocationDetails = locationAddress;
       _selectedDestination = destination;
-      _destinationAddress = destinationAddress;
+      _destinationAddress = destinationAddress ?? "";
+      _trackingDurationMinutes = durationMinutes;
 
+      // Calculate session end time if duration is provided
+      if (durationMinutes != null && durationMinutes > 0) {
+        _sessionEndTime = DateTime.now().add(Duration(minutes: durationMinutes));
+        // Start timer to check for duration expiry
+        _startDurationTimer();
+      } else {
+        _sessionEndTime = null;
+      }
+
+      print('Calling SupabaseService.startTrackingSession...');
       await _supabaseService.startTrackingSession(
         userPhone: _userPhone!,
         userName: _userName ?? 'Unknown User',
         latitude: currentPosition.latitude,
         longitude: currentPosition.longitude,
         locationAddress: locationAddress,
-        destinationLatitude: destination.latitude,
-        destinationLongitude: destination.longitude,
-        destinationAddress: destinationAddress.isNotEmpty ? destinationAddress : null,
+        destinationLatitude: destination?.latitude,
+        destinationLongitude: destination?.longitude,
+        destinationAddress: destinationAddress?.isNotEmpty == true ? destinationAddress : null,
+        durationMinutes: durationMinutes,
       );
 
       // Start periodic location updates (every 30 seconds)
@@ -162,10 +186,12 @@ class TrackingService extends ChangeNotifier {
       _isTracking = true;
       notifyListeners();
 
-      print('TrackingService: Tracking started successfully');
+      print('✓ TrackingService: Tracking started successfully${durationMinutes != null ? ' for $durationMinutes minutes' : ''}');
       return true;
-    } catch (e) {
-      print('TrackingService: Error starting tracking: $e');
+    } catch (e, stackTrace) {
+      print('✗ TrackingService: Error starting tracking');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
       return false;
     }
   }
@@ -175,6 +201,10 @@ class TrackingService extends ChangeNotifier {
     try {
       _trackingTimer?.cancel();
       _trackingTimer = null;
+
+      // Cancel duration timer
+      _durationTimer?.cancel();
+      _durationTimer = null;
 
       // Stop background location tracking
       _positionStream?.cancel();
@@ -190,6 +220,8 @@ class TrackingService extends ChangeNotifier {
       _isTracking = false;
       _selectedDestination = null;
       _destinationAddress = "";
+      _trackingDurationMinutes = null;
+      _sessionEndTime = null;
       notifyListeners();
 
       print('TrackingService: Tracking stopped successfully');
@@ -198,6 +230,17 @@ class TrackingService extends ChangeNotifier {
       print('TrackingService: Error stopping tracking: $e');
       return false;
     }
+  }
+
+  /// Start timer to check for duration expiry
+  void _startDurationTimer() {
+    // Check every minute if duration has expired
+    _durationTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (_sessionEndTime != null && DateTime.now().isAfter(_sessionEndTime!)) {
+        print('TrackingService: Duration expired, stopping tracking');
+        _autoStopTracking(reason: 'duration');
+      }
+    });
   }
 
   /// Update location in database
@@ -295,19 +338,30 @@ class TrackingService extends ChangeNotifier {
     return distance <= 50.0; // 50 meters threshold
   }
 
-  /// Auto-stop tracking when destination is reached
-  Future<void> _autoStopTracking() async {
+  /// Auto-stop tracking when destination is reached or duration expires
+  Future<void> _autoStopTracking({String reason = 'destination'}) async {
     if (!_isTracking) return;
 
     try {
       await stopTracking();
 
+      String title;
+      String body;
+
+      if (reason == 'duration') {
+        title = 'Time Expired!';
+        body = 'Your location sharing session has ended.';
+      } else {
+        title = 'Destination Reached!';
+        body = 'Tracking has been automatically stopped as you reached your destination.';
+      }
+
       await _showNotification(
-        title: 'Destination Reached!',
-        body: 'Tracking has been automatically stopped as you reached your destination.',
+        title: title,
+        body: body,
       );
 
-      print('TrackingService: Destination reached - tracking auto-stopped');
+      print('TrackingService: Tracking auto-stopped - reason: $reason');
     } catch (e) {
       print('TrackingService: Error auto-stopping tracking: $e');
     }
@@ -315,6 +369,16 @@ class TrackingService extends ChangeNotifier {
 
   /// Show persistent tracking notification
   Future<void> _showPersistentTrackingNotification() async {
+    // Build notification text based on tracking type
+    String notificationText;
+    if (_trackingDurationMinutes != null) {
+      notificationText = 'Sharing location for $_trackingDurationMinutes minutes. Tap to view.';
+    } else if (_selectedDestination != null) {
+      notificationText = 'Sharing location to destination. Tap to view.';
+    } else {
+      notificationText = 'Sharing location indefinitely. Tap to view.';
+    }
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'tracking_ongoing_channel',
@@ -333,7 +397,7 @@ class TrackingService extends ChangeNotifier {
     await _notifications.show(
       2, // Notification ID (different from SOS)
       'Location Tracking Active',
-      'Your location is being shared. Tap to view.',
+      notificationText,
       platformChannelSpecifics,
       payload: 'tracking_active',
     );

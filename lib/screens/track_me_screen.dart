@@ -47,6 +47,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   String _emergencyPhoneNumber = '9326520525'; // Default fallback number
   static const String _emergencyServiceName = 'Police'; // Service name to fetch from database
 
+  // Time-based tracking
+  int? _selectedDurationMinutes; // null = indefinite tracking
+
   // Background tracking and notification
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   static const double _destinationProximityMeters = 50.0; // Auto-stop when within 50 meters
@@ -256,6 +259,76 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     _getLocationDetails(position.latitude, position.longitude);
     _updateMarkers();
     _drawRoute();
+
+    // Auto-start tracking when destination is selected
+    if (!_isTracking) {
+      // Show confirmation dialog before starting
+      _showStartTrackingDialog();
+    }
+  }
+
+  // Show dialog to start tracking after selecting destination
+  void _showStartTrackingDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Destination Selected',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.location_on,
+                color: Colors.red,
+                size: 50,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Start sharing your location to this destination?',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _startTracking();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Start Sharing',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Search for locations
@@ -389,37 +462,146 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       return;
     }
 
-    if (_selectedDestination == null) {
-      _showMessage('Please select a destination first by tapping on the map or searching', Colors.orange);
-      return;
+    // If destination is selected, auto-start tracking
+    if (_selectedDestination != null) {
+      await _startTrackingWithDuration();
+    } else {
+      // If no destination, show duration selection dialog
+      _showDurationSelectionDialog();
     }
+  }
+
+  // Show duration selection dialog
+  void _showDurationSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Share Location For',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select how long you want to share your location',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              // Duration options
+              ...[
+                {'label': '15 minutes', 'minutes': 15},
+                {'label': '30 minutes', 'minutes': 30},
+                {'label': '1 hour', 'minutes': 60},
+                {'label': '2 hours', 'minutes': 120},
+                {'label': 'Indefinitely', 'minutes': null},
+              ].map((option) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _selectedDurationMinutes = option['minutes'] as int?;
+                          _startTrackingWithDuration();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Text(
+                          option['label'] as String,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Start tracking with selected duration
+  Future<void> _startTrackingWithDuration() async {
+    print('=== _startTrackingWithContext ===');
+    print('Current position: $_currentPosition');
+    print('Selected destination: $_selectedDestination');
+    print('Selected duration: $_selectedDurationMinutes');
 
     // Request background location permission first
     await _requestBackgroundLocationPermission();
 
     try {
+      print('Starting tracking service...');
       final success = await _trackingService.startTracking(
         currentPosition: _currentPosition!,
         locationAddress: _currentLocationDetails.split('\n').first,
-        destination: _selectedDestination!,
-        destinationAddress: _destinationAddress,
+        destination: _selectedDestination, // Now optional
+        destinationAddress: _destinationAddress.isNotEmpty ? _destinationAddress : null,
+        durationMinutes: _selectedDurationMinutes,
       );
 
+      print('Tracking service result: $success');
+
       if (success) {
+        String durationText = _selectedDurationMinutes != null
+            ? 'for ${_getDurationText(_selectedDurationMinutes!)}'
+            : _selectedDestination != null ? 'to your destination' : 'indefinitely';
+
         _showNotification(
           title: 'Tracking Started',
-          body: 'Your journey to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'your destination'} has begun.',
+          body: 'Your location is being shared $durationText.',
         );
 
-        _showMessage('Tracking started successfully to your destination', Colors.green);
-        print('Tracking started successfully with background monitoring');
+        _showMessage('Tracking started successfully', Colors.green);
+        print('✓ Tracking started successfully with background monitoring');
       } else {
         _showMessage('Failed to start tracking', Colors.red);
+        print('✗ Tracking service returned false');
       }
-    } catch (e) {
-      print('Error starting tracking: $e');
-      _showMessage('Failed to start tracking', Colors.red);
+    } catch (e, stackTrace) {
+      print('✗ Error starting tracking: $e');
+      print('Stack trace: $stackTrace');
+      _showMessage('Failed to start tracking: ${e.toString()}', Colors.red);
     }
+  }
+
+  // Get duration text for display
+  String _getDurationText(int minutes) {
+    if (minutes < 60) {
+      return '$minutes minutes';
+    } else {
+      final hours = minutes / 60;
+      return '${hours.toInt()} hour${hours > 1 ? "s" : ""}';
+    }
+  }
+
+  // Format time for display
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   // Stop tracking session
@@ -1013,41 +1195,92 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: ElevatedButton(
-                  onPressed: _toggleTracking,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isTracking
-                        ? Colors.red[600]
-                        : (_selectedDestination != null ? Colors.green[600] : Colors.grey[400]),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _isTracking
-                            ? Icons.stop
-                            : (_selectedDestination != null ? Icons.play_arrow : Icons.location_searching),
-                        color: Colors.white,
-                        size: 20,
+                child: Column(
+                  children: [
+                    // Start/Stop tracking button
+                    ElevatedButton(
+                      onPressed: _toggleTracking,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isTracking ? Colors.red[600] : Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 2,
+                        minimumSize: const Size(double.infinity, 50),
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _isTracking
-                            ? 'Tracking: ON'
-                            : (_selectedDestination != null ? 'Start Tracking' : 'Select Destination First'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isTracking ? Icons.stop : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _isTracking
+                                ? 'Stop Tracking'
+                                : 'Start Sharing Location',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Display current tracking status
+                    if (_isTracking) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green[300]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.green[600], size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _trackingService.trackingDurationMinutes != null
+                                        ? 'Sharing for ${_getDurationText(_trackingService.trackingDurationMinutes!)}'
+                                        : _trackingService.selectedDestination != null
+                                            ? 'Sharing to destination'
+                                            : 'Sharing indefinitely',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Show remaining time if duration-based
+                            if (_trackingService.sessionEndTime != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Ends at ${_formatTime(_trackingService.sessionEndTime!)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
 
