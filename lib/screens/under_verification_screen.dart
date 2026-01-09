@@ -1,11 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import '../services/supabase_service.dart';
 
-class UnderVerificationScreen extends StatelessWidget {
+class UnderVerificationScreen extends StatefulWidget {
   final bool showProfileIcon;
   const UnderVerificationScreen({super.key, this.showProfileIcon = true});
+
+  @override
+  State<UnderVerificationScreen> createState() => _UnderVerificationScreenState();
+}
+
+class _UnderVerificationScreenState extends State<UnderVerificationScreen> {
+  final SupabaseService _supabaseService = SupabaseService();
+  String? _policeStationNumber;
+  String? _policeStationName;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPoliceStationNumber();
+  }
+
+  Future<void> _loadPoliceStationNumber() async {
+    try {
+      // Get current user's email
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email != null) {
+        // Get user credentials to find phone number
+        final credentials = await _supabaseService.getUserCredentials(email);
+        if (credentials != null) {
+          final phone = credentials['phone_number'];
+
+          // Get user profile to find police station
+          final profile = await _supabaseService.getUserProfileByPhone(phone);
+          if (profile != null) {
+            final policeStation = profile['police_station'];
+
+            if (policeStation != null && policeStation.toString().isNotEmpty) {
+              setState(() {
+                _policeStationName = policeStation.toString();
+              });
+
+              // Get police station contact number with SOS fallback
+              final contactNumber = await _supabaseService.getPoliceStationNumberWithSOSFallback(policeStation);
+
+              setState(() {
+                _policeStationNumber = contactNumber;
+                _isLoading = false;
+              });
+            } else {
+              // No police station assigned, just show SOS number
+              final sosNumber = await _supabaseService.getPoliceEmergencyNumber();
+              setState(() {
+                _policeStationNumber = sosNumber ?? '9326520525';
+                _policeStationName = 'Police Emergency';
+                _isLoading = false;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error loading police station number: $e');
+      // Fallback to SOS number on error
+      final sosNumber = await _supabaseService.getPoliceEmergencyNumber();
+      setState(() {
+        _policeStationNumber = sosNumber ?? '9326520525';
+        _policeStationName = 'Police Emergency';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _callPoliceStation() async {
+    if (_policeStationNumber == null) return;
+
+    final Uri phoneUri = Uri(scheme: 'tel', path: _policeStationNumber!.replaceAll('-', ''));
+
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not launch dialer. Please dial $_policeStationNumber manually.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error launching dialer: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening dialer. Please dial $_policeStationNumber manually.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +158,7 @@ class UnderVerificationScreen extends StatelessWidget {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      if (showProfileIcon)
+                      if (widget.showProfileIcon)
                         IconButton(
                           icon: const Icon(Icons.account_circle, color: Colors.black),
                           onPressed: () {
@@ -86,26 +185,103 @@ class UnderVerificationScreen extends StatelessWidget {
                 ),
 
                 // Content
-                const Expanded(
+                Expanded(
                   child: Center(
                     child: Padding(
-                      padding: EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(20.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle, size: 100, color: Colors.green),
-                          SizedBox(height: 20),
-                          Text(
+                          const Icon(Icons.check_circle, size: 100, color: Colors.green),
+                          const SizedBox(height: 20),
+                          const Text(
                             'Thank you for enrolling!',
                             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
-                          SizedBox(height: 10),
-                          Text(
+                          const SizedBox(height: 10),
+                          const Text(
                             'You will get access to the application once it is approved by the admin.',
                             style: TextStyle(fontSize: 16),
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 30),
+                          // Police station contact information
+                          if (_isLoading)
+                            const CircularProgressIndicator()
+                          else if (_policeStationNumber != null)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.phone, color: Colors.blue[700], size: 24),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Contact ${_policeStationName ?? "Police"}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              _policeStationNumber!,
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                color: Colors.blue[700],
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ElevatedButton.icon(
+                                        onPressed: _callPoliceStation,
+                                        icon: const Icon(Icons.call, size: 18),
+                                        label: const Text('Call'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green[600],
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_policeStationName != 'Police Emergency')
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        'For any queries regarding your enrollment',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),

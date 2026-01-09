@@ -469,8 +469,39 @@ class SupabaseService {
     } catch (e) {
       // Fallback to default emergency number if table doesn't exist
       print('Error getting emergency number from database: $e');
-      return '100'; // Default emergency number
+      return '9326520525'; // Default emergency number
     }
+  }
+
+  // Get police station contact number by station name
+  Future<String?> getPoliceStationContactNumber(String policeStation) async {
+    try {
+      final response = await _supabase
+          .from('police_station_contacts')
+          .select('contact_number')
+          .eq('station_name', policeStation)
+          .eq('is_active', true)
+          .single();
+
+      return response['contact_number'] as String?;
+    } catch (e) {
+      print('Error getting police station contact number for $policeStation: $e');
+      return null;
+    }
+  }
+
+  // Get police station contact number with SOS fallback
+  Future<String> getPoliceStationNumberWithSOSFallback(String policeStation) async {
+    // Try to get police station specific number first
+    final stationNumber = await getPoliceStationContactNumber(policeStation);
+
+    if (stationNumber != null && stationNumber.isNotEmpty) {
+      return stationNumber;
+    }
+
+    // Fallback to SOS emergency number
+    final sosNumber = await getPoliceEmergencyNumber();
+    return sosNumber ?? '9326520525';
   }
 
   // Send SMS using Supabase Edge Function (via direct HTTP call)
