@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:aadharwad/screens/register_complaint_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -70,7 +71,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                 _fullName = name.split(' ').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '').join(' ');
               }
 
-              final url = profile?['profile_photo_url'] as String?;
+              final url = profile?['profile_img'] as String?;
               _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
             });
           }
@@ -743,7 +744,7 @@ class DashboardScreenState extends State<DashboardScreen> {
                     child: CircleAvatar(
                       radius: screenWidth * 0.08,
                       backgroundImage: _profilePhotoUrl != null
-                          ? NetworkImage(_profilePhotoUrl!)
+                          ? MemoryImage(base64Decode(_profilePhotoUrl!))
                           : const AssetImage('assets/elderly_woman.png') as ImageProvider,
                       backgroundColor: Colors.grey.shade200,
                     ),

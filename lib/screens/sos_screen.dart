@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -477,7 +478,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
               'relation': profile['emergency_contact_2_relation'] ?? 'Contact'
             },
         ];
-        final url = profile['profile_photo_url'] as String?;
+        final url = profile['profile_img'] as String?;
         _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
       });
     } catch (e) {
@@ -698,7 +699,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
               child: CircleAvatar(
                 radius: avatarRadius * 0.93,
                 backgroundImage: _profilePhotoUrl != null
-                    ? NetworkImage(_profilePhotoUrl!)
+                    ? MemoryImage(base64Decode(_profilePhotoUrl!))
                     : AssetImage(_defaultUserAvatarPath) as ImageProvider,
                 backgroundColor: Colors.grey.shade200,
               ),

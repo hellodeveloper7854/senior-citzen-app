@@ -1125,7 +1125,7 @@ class SignupScreenState extends State<SignupScreen> {
         'blood_group': _selectedBloodGroup,
         'is_physically_disabled': _isPhysicallyDisabled,
         'disability_type': _isPhysicallyDisabled ? _disabilityTypeController.text : null,
-        'profile_photo_url': profilePhotoUrl,
+        'profile_img': profilePhotoUrl,
       };
 
       await _supabaseService.insertUserProfile(profileData);

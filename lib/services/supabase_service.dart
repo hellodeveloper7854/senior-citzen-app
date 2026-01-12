@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../utils/crypto_util.dart';
 import 'package:http/http.dart' as http;
 
@@ -146,34 +147,18 @@ class SupabaseService {
     return profile;
   }
 
-  // Upload profile photo to Supabase Storage and return a public URL
-  // Make sure you have a public bucket named "profile-photos" in Supabase
+  // Convert profile photo to base64 string (without data:image prefix)
   Future<String> uploadProfilePhoto(File file, String phoneNumber) async {
-    final String fileExt = file.path.split('.').last.toLowerCase();
-    final String fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-    final String storagePath = 'profiles/$phoneNumber/$fileName';
-
-    // Upload file
-    await _supabase.storage.from('profile-photos').upload(
-      storagePath,
-      file,
-      fileOptions: FileOptions(
-        cacheControl: '3600',
-        upsert: true,
-        contentType: 'image/$fileExt',
-      ),
-    );
-
-    // Get public URL
-    final String publicUrl = _supabase.storage.from('profile-photos').getPublicUrl(storagePath);
-    return publicUrl;
+    final bytes = await file.readAsBytes();
+    final base64String = base64Encode(bytes);
+    return base64String;
   }
 
   // Update only the profile photo URL field for a given contact number
   Future<void> updateProfilePhotoUrl(String phoneNumber, String publicUrl) async {
     await _supabase
         .from('registrations')
-        .update({'profile_photo_url': publicUrl})
+        .update({'profile_img': publicUrl})
         .eq('contact_number', phoneNumber);
   }
 

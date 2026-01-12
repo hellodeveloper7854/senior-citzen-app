@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -125,7 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _selectedMedicalConditions = mc.split(',').map((e) => e.trim()).toList();
     }
     _otherMedicalController.text = p['other_medical_conditions'] ?? '';
-    _currentPhotoUrl = p['profile_photo_url'];
+    _currentPhotoUrl = p['profile_img'];
     _emergency1NameController.text = p['emergency_contact_1_name'] ?? '';
     _emergency1NumberController.text = p['emergency_contact_1_number'] ?? '';
     _selectedEmergency1Relation = p['emergency_contact_1_relation'];
@@ -219,7 +220,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       };
 
       if (photoUrl != null && photoUrl.isNotEmpty && photoUrl != _currentPhotoUrl) {
-        updates['profile_photo_url'] = photoUrl;
+        updates['profile_img'] = photoUrl;
       }
 
       await _supabaseService.updateUserProfile(contactNumber, updates);
@@ -292,7 +293,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         backgroundImage: _pickedImage != null
                             ? FileImage(File(_pickedImage!.path))
                             : (_currentPhotoUrl != null && _currentPhotoUrl!.isNotEmpty
-                                ? NetworkImage(_currentPhotoUrl!)
+                                ? MemoryImage(base64Decode(_currentPhotoUrl!))
                                 : const AssetImage('assets/Ellipse.png')) as ImageProvider,
                       ),
                       const SizedBox(height: 12),

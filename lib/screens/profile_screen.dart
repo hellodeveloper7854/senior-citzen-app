@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:aadharwad/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -190,8 +191,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: screenWidth * 0.125,
-                                  backgroundImage: _userProfile!['profile_photo_url'] != null
-                                      ? NetworkImage(_userProfile!['profile_photo_url'])
+                                  backgroundImage: _userProfile!['profile_img'] != null
+                                      ? MemoryImage(base64Decode(_userProfile!['profile_img']))
                                       : const AssetImage('assets/Ellipse.png') as ImageProvider,
                                 ),
                                 Positioned(

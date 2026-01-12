@@ -1,7 +1,7 @@
 -- Create user_credentials table (registrations table already exists)
 
 -- Add optional profile picture column to registrations
-ALTER TABLE registrations ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
+ALTER TABLE registrations ADD COLUMN IF NOT EXISTS profile_img TEXT;
 
 -- Add disability columns to registrations table
 ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_physically_disabled BOOLEAN DEFAULT FALSE;
@@ -110,7 +110,7 @@ AND table_name IN ('registrations', 'user_credentials', 'sos_alerts', 'audio_rec
 -- Check if all required columns exist in registrations table
 SELECT column_name FROM information_schema.columns
 WHERE table_name = 'registrations'
-AND column_name IN ('profile_photo_url', 'is_physically_disabled', 'disability_type', 'status', 'rejection_reason');
+AND column_name IN ('profile_img', 'is_physically_disabled', 'disability_type', 'status', 'rejection_reason');
 
 -- Check if constraints exist
 SELECT conname, consrc FROM pg_constraint
