@@ -4,7 +4,12 @@
       "Bash(fvm flutter run:*)",
       "Bash(fvm flutter:*)",
       "Bash(fvm --version:*)",
-      "Bash(nc:*)"
+      "Bash(nc:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter build:*)",
+      "Bash(dir:*)",
+      "Bash(nul:*)"
     ],
     "deny": [],
     "ask": []
