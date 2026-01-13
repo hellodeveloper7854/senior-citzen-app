@@ -233,48 +233,93 @@ app.get('/api/users/:contactNumber', async (req, res) => {
 app.post('/api/users', async (req, res) => {
   try {
     const {
-      name,
-      contact_number,
+      full_name,
+      date_of_birth,
+      gender,
       aadhar_number,
+      contact_number,
+      marital_status,
+      living_with,
+      police_station,
+      address,
+      pincode,
+      preferred_language,
       emergency_contact_1_name,
+      emergency_contact_1_relation,
       emergency_contact_1_number,
       emergency_contact_2_name,
+      emergency_contact_2_relation,
       emergency_contact_2_number,
+      medical_conditions,
+      other_medical_conditions,
+      blood_group,
+      profile_photo_url,
+      profile_img,  // Frontend sends this field
       is_physically_disabled,
-      disability_type,
-      police_station
+      disability_type
     } = req.body;
 
-    console.log(`Creating new user registration for: ${name} (${contact_number})`);
+    // Use profile_img if profile_photo_url is not provided
+    const finalProfilePhotoUrl = profile_photo_url || profile_img || null;
+
+    console.log(`Creating new user registration for: ${full_name} (${contact_number})`);
     console.log(`Police Station: ${police_station}, Disabled: ${is_physically_disabled}`);
+
+    // Convert medical_conditions array to string if it's an array
+    const medicalConditionsStr = Array.isArray(medical_conditions)
+      ? medical_conditions.join(', ')
+      : medical_conditions;
 
     const result = await pool.query(
       `INSERT INTO registrations (
-        name, contact_number, aadhar_number,
-        emergency_contact_1_name, emergency_contact_1_number,
-        emergency_contact_2_name, emergency_contact_2_number,
-        is_physically_disabled, disability_type, police_station
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        full_name, date_of_birth, gender, aadhar_number, contact_number,
+        marital_status, living_with, police_station, address, pincode,
+        preferred_language, emergency_contact_1_name, emergency_contact_1_relation,
+        emergency_contact_1_number, emergency_contact_2_name, emergency_contact_2_relation,
+        emergency_contact_2_number, medical_conditions, other_medical_conditions,
+        blood_group, profile_photo_url, is_physically_disabled, disability_type, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
       RETURNING *`,
       [
-        name,
+        full_name,
+        date_of_birth || null,
+        gender || null,
+        aadhar_number || null,
         contact_number,
-        aadhar_number,
-        emergency_contact_1_name,
-        emergency_contact_1_number,
-        emergency_contact_2_name,
-        emergency_contact_2_number,
+        marital_status || null,
+        living_with || null,
+        police_station || null,
+        address || null,
+        pincode || null,
+        preferred_language || null,
+        emergency_contact_1_name || null,
+        emergency_contact_1_relation || null,
+        emergency_contact_1_number || null,
+        emergency_contact_2_name || null,
+        emergency_contact_2_relation || null,
+        emergency_contact_2_number || null,
+        medicalConditionsStr || null,
+        other_medical_conditions || null,
+        blood_group || null,
+        finalProfilePhotoUrl,
         is_physically_disabled || false,
-        disability_type,
-        police_station
+        disability_type || null,
+        'pending'  // Default status
       ]
     );
 
-    console.log(`Successfully created user with ID: ${result.rows[0].id}`);
+    console.log(`✅ Successfully created user with ID: ${result.rows[0].id}, Status: ${result.rows[0].status}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+    console.error('❌ Error creating user:', error);
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error constraint:', error.constraint);
+    res.status(500).json({
+      error: 'Failed to create user',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 
