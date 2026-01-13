@@ -640,56 +640,56 @@ class DashboardScreenState extends State<DashboardScreen> {
                         // Right side icons
                         Row(
                           children: [
-                            // Notification Bell with Badge
-                            Stack(
-                              children: [
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.notifications,
-                                    color: Colors.white,
-                                    size: screenWidth * 0.06,
-                                  ),
-                                  onPressed: () {
-                                    // Navigate to notifications screen
-                                    _showNotificationsBottomSheet();
-                                  },
-                                ),
-                                // Badge for unread count
-                                if (_unreadNotificationCount > 0)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: const Color(0xFF340298),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 18,
-                                        minHeight: 18,
-                                      ),
-                                      child: Text(
-                                        _unreadNotificationCount > 99
-                                            ? '99+'
-                                            : '$_unreadNotificationCount',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            // Notification Bell with Badge - COMMENTED OUT
+                            // Stack(
+                            //   children: [
+                            //     IconButton(
+                            //       icon: Icon(
+                            //         Icons.notifications,
+                            //         color: Colors.white,
+                            //         size: screenWidth * 0.06,
+                            //       ),
+                            //       onPressed: () {
+                            //         // Navigate to notifications screen
+                            //         _showNotificationsBottomSheet();
+                            //       },
+                            //     ),
+                            //     // Badge for unread count
+                            //     if (_unreadNotificationCount > 0)
+                            //       Positioned(
+                            //         right: 0,
+                            //         top: 0,
+                            //         child: Container(
+                            //           padding: const EdgeInsets.all(4),
+                            //           decoration: BoxDecoration(
+                            //             color: Colors.red,
+                            //             shape: BoxShape.circle,
+                            //             border: Border.all(
+                            //               color: const Color(0xFF340298),
+                            //               width: 2,
+                            //             ),
+                            //           ),
+                            //           constraints: const BoxConstraints(
+                            //             minWidth: 18,
+                            //             minHeight: 18,
+                            //           ),
+                            //           child: Text(
+                            //             _unreadNotificationCount > 99
+                            //                 ? '99+'
+                            //                 : '$_unreadNotificationCount',
+                            //             style: const TextStyle(
+                            //               color: Colors.white,
+                            //               fontSize: 10,
+                            //               fontWeight: FontWeight.bold,
+                            //             ),
+                            //             textAlign: TextAlign.center,
+                            //           ),
+                            //         ),
+                            //       ),
+                            //   ],
+                            // ),
 
-                            const SizedBox(width: 8),
+                            // const SizedBox(width: 8),
 
                             // Profile Icon (Tappable)
                             IconButton(
