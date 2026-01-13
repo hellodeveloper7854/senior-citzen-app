@@ -591,6 +591,9 @@ app.post('/api/sos-alerts', async (req, res) => {
     console.log(`Police Station: ${police_station}`);
     console.log(`Emergency Contacts: ${JSON.stringify(emergency_contacts)}`);
 
+    // Handle emergency_contacts - ensure it's an array
+    const contactsArray = Array.isArray(emergency_contacts) ? emergency_contacts : [];
+
     const result = await pool.query(
       `INSERT INTO sos_alerts (
         user_id, user_name, latitude, longitude,
@@ -604,7 +607,7 @@ app.post('/api/sos-alerts', async (req, res) => {
         longitude,
         location_address,
         police_station,
-        JSON.stringify(emergency_contacts || []),
+        contactsArray,  // Pass array directly for PostgreSQL TEXT[] type
         'active'  // Explicitly set status to 'active'
       ]
     );
