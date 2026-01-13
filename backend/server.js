@@ -265,10 +265,10 @@ app.post('/api/users', async (req, res) => {
     console.log(`Creating new user registration for: ${full_name} (${contact_number})`);
     console.log(`Police Station: ${police_station}, Disabled: ${is_physically_disabled}`);
 
-    // Convert medical_conditions array to string if it's an array
-    const medicalConditionsStr = Array.isArray(medical_conditions)
-      ? medical_conditions.join(', ')
-      : medical_conditions;
+    // Handle medical_conditions - keep as array for PostgreSQL TEXT[] type
+    const medicalConditionsArray = Array.isArray(medical_conditions)
+      ? medical_conditions
+      : (medical_conditions ? [medical_conditions] : []);
 
     const result = await pool.query(
       `INSERT INTO registrations (
@@ -298,7 +298,7 @@ app.post('/api/users', async (req, res) => {
         emergency_contact_2_name || null,
         emergency_contact_2_relation || null,
         emergency_contact_2_number || null,
-        medicalConditionsStr || null,
+        medicalConditionsArray,  // Pass array directly for PostgreSQL TEXT[] type
         other_medical_conditions || null,
         blood_group || null,
         finalProfilePhotoUrl,
