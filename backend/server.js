@@ -374,13 +374,13 @@ app.post('/api/recordings', upload.single('audio'), async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO audio_recordings (user_phone, audio_url, police_station)
-       VALUES ($1, $2, $3)
+      `INSERT INTO audio_recordings (user_phone, audio_url, police_station, status)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [user_phone, audioUrl, police_station]
+      [user_phone, audioUrl, police_station, 'pending']  // Explicitly set status to 'pending'
     );
 
-    console.log(`✅ Audio recording created with ID: ${result.rows[0].id}`);
+    console.log(`✅ Audio recording created with ID: ${result.rows[0].id}, Status: ${result.rows[0].status}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error creating recording:', error);
