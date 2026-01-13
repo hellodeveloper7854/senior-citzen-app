@@ -594,8 +594,8 @@ app.post('/api/sos-alerts', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO sos_alerts (
         user_id, user_name, latitude, longitude,
-        location_address, police_station, emergency_contacts
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        location_address, police_station, emergency_contacts, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
       [
         user_id,
@@ -604,15 +604,18 @@ app.post('/api/sos-alerts', async (req, res) => {
         longitude,
         location_address,
         police_station,
-        JSON.stringify(emergency_contacts || [])
+        JSON.stringify(emergency_contacts || []),
+        'active'  // Explicitly set status to 'active'
       ]
     );
 
-    console.log(`✅ SOS Alert created with ID: ${result.rows[0].id}`);
+    console.log(`✅ SOS Alert created with ID: ${result.rows[0].id}, Status: ${result.rows[0].status}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error creating SOS alert:', error);
-    res.status(500).json({ error: 'Failed to create SOS alert' });
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error code:', error.code);
+    res.status(500).json({ error: 'Failed to create SOS alert', details: error.message });
   }
 });
 
