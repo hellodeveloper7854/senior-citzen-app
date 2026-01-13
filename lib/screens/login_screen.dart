@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   // Hash password using SHA-256 (same method as in ApiService)
   String _hashPassword(String password) {
@@ -43,11 +44,18 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // Show loading dialog
+    setState(() {
+      _isLoading = true;
+    });
+    _showLoadingDialog();
+
     try {
       // Call backend login API
       var loginResponse = await _apiService.login(identifier, password);
 
       if (loginResponse == null) {
+        _hideLoadingDialog();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login failed')));
         return;
       }
@@ -61,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Get profile
       var profile = await _apiService.getUserProfileByPhone(phoneNumber);
       if (profile == null) {
+        _hideLoadingDialog();
         print('Profile not found for phone: $phoneNumber');
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile not found')));
         return;
@@ -77,6 +86,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // Check user status - default to pending if not set
       String userStatus = profile['status'] ?? 'pending';
       print('User status: $userStatus');
+
+      // Hide loading dialog before navigation
+      _hideLoadingDialog();
 
       if (userStatus == 'verified') {
         Navigator.pushReplacement(
@@ -101,8 +113,62 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      _hideLoadingDialog();
       print('Login error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  // Show loading dialog
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3E0FAD)),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Signing in...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please wait',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Hide loading dialog
+  void _hideLoadingDialog() {
+    if (_isLoading && mounted) {
+      Navigator.of(context).pop();
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
