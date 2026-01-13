@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../utils/crypto_util.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   // API Configuration
@@ -346,28 +347,78 @@ class ApiService {
   // AUDIO RECORDINGS
   // ============================================================================
 
-  // Note: For file upload, we need to add an endpoint to backend or use cloud storage
-  // For now, returning a placeholder URL
+  // Upload audio file to backend (which uploads to Supabase)
   Future<String> uploadAudioRecording(File file, String phoneNumber) async {
-    // TODO: Implement actual file upload to cloud storage or add upload endpoint to backend
-    final String fileExt = 'm4a';
-    final String fileName = 'recording_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-    // This is a placeholder - implement actual storage
-    return 'https://example.com/recordings/$phoneNumber/$fileName';
+    try {
+      print('📤 Uploading audio recording to backend...');
+      print('File path: ${file.path}');
+      print('Phone number: $phoneNumber');
+
+      // Read file bytes
+      final fileBytes = await file.readAsBytes();
+      final fileName = file.path.split('/').last;
+
+      // Create multipart request
+      final uri = Uri.parse('$baseUrl/recordings');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Attach audio file
+      final multipartFile = http.MultipartFile.fromBytes(
+        'audio',
+        fileBytes,
+        filename: fileName,
+        contentType: MediaType('audio', 'm4a'),
+      );
+      request.files.add(multipartFile);
+
+      // Add form fields
+      request.fields['user_phone'] = phoneNumber;
+
+      // Get user's police station from profile
+      final userProfile = await getUserProfileByPhone(phoneNumber);
+      final policeStation = userProfile?['police_station'] ?? 'Unknown';
+      request.fields['police_station'] = policeStation;
+
+      // Send request
+      print('📡 Sending upload request to ${uri.path}');
+      final streamedResponse = await request.send();
+
+      // Get response
+      final response = await http.Response.fromStream(streamedResponse);
+      print('📡 Upload response status: ${response.statusCode}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.body.isEmpty) {
+          throw Exception('Empty response from server');
+        }
+
+        final responseData = jsonDecode(response.body);
+        final audioUrl = responseData['audio_url'] as String?;
+
+        if (audioUrl == null || audioUrl.isEmpty) {
+          throw Exception('No audio URL returned from server');
+        }
+
+        print('✅ Audio uploaded successfully!');
+        print('🔗 Audio URL: $audioUrl');
+        return audioUrl;
+      } else {
+        print('❌ Upload failed: ${response.statusCode}');
+        print('Error response: ${response.body}');
+        throw Exception('Failed to upload audio: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('❌ Error uploading audio recording: $e');
+      throw Exception('Failed to upload audio recording: $e');
+    }
   }
 
   Future<void> saveRecordingMetadata(String phoneNumber, String audioUrl, String timestamp) async {
-    // Get user's police station from profile
-    final userProfile = await getUserProfileByPhone(phoneNumber);
-    final policeStation = userProfile?['police_station'] ?? 'Unknown';
-
-    await _post('/recordings', {
-      'user_phone': phoneNumber,
-      'audio_url': audioUrl,
-      'recorded_at': timestamp,
-      'police_station': policeStation,
-      'status': 'pending',
-    });
+    // Note: This method is no longer needed as metadata is saved
+    // automatically during file upload in uploadAudioRecording()
+    // Keeping it for backward compatibility
+    print('⚠️ saveRecordingMetadata is deprecated. Metadata is saved during upload.');
+    print('📝 Metadata already saved for: $phoneNumber');
   }
 
   Future<List<Map<String, dynamic>>> getAllRecordings() async {

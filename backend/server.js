@@ -1,6 +1,8 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const multer = require('multer');
+const { uploadAudioFile } = require('./services/supabaseService');
 require('dotenv').config();
 
 const app = express();
@@ -8,7 +10,16 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Configure multer for file uploads (stored in memory)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+});
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -338,20 +349,35 @@ app.get('/api/recordings/:id', async (req, res) => {
 });
 
 // Create new audio recording
-app.post('/api/recordings', async (req, res) => {
+app.post('/api/recordings', upload.single('audio'), async (req, res) => {
   try {
-    const { user_phone, audio_url, police_station, duration } = req.body;
+    const { user_phone, police_station, duration } = req.body;
+    const audioFile = req.file;
 
     console.log('🎙️ New audio recording received');
     console.log(`User Phone: ${user_phone}, Duration: ${duration}s`);
     console.log(`Police Station: ${police_station}`);
-    console.log(`Audio URL: ${audio_url}`);
+    console.log(`Has audio file: ${!!audioFile}`);
+
+    let audioUrl;
+
+    if (audioFile) {
+      // Upload file to Supabase
+      const fileName = `recording_${Date.now()}.m4a`;
+      audioUrl = await uploadAudioFile(audioFile.buffer, fileName, user_phone);
+    } else if (req.body.audio_url) {
+      // Use provided URL (for backward compatibility)
+      audioUrl = req.body.audio_url;
+    } else {
+      console.log('❌ No audio file or URL provided');
+      return res.status(400).json({ error: 'Audio file or URL is required' });
+    }
 
     const result = await pool.query(
       `INSERT INTO audio_recordings (user_phone, audio_url, police_station, duration)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [user_phone, audio_url, police_station, duration]
+      [user_phone, audioUrl, police_station, duration]
     );
 
     console.log(`✅ Audio recording created with ID: ${result.rows[0].id}`);

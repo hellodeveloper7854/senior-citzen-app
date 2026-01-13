@@ -52,6 +52,10 @@
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>This app needs access to your photo library to select a profile picture.</string>
 
+		<!-- Microphone permission for recording audio -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>This app needs access to your microphone to record voice complaints for police assistance.</string>
+
 		<!-- Location permissions -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>This app needs access to your location to track and share your position for safety purposes.</string>

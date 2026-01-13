@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/api_service.dart';
 import '../utils/permission_utils.dart';
 import 'recording_status_screen.dart';
@@ -47,36 +49,115 @@ class RecordScreenState extends State<RecordScreen> {
   }
   Future<void> _startRecording() async {
     try {
+      // Check if platform is supported
+      if (Platform.isWindows || Platform.isLinux || kIsWeb) {
+        _showUnsupportedPlatformDialog();
+        return;
+      }
+
       // Request microphone permission if not granted
       final hasPermission = await PermissionUtils.requestMicrophonePermission(context);
 
       if (hasPermission) {
-        final directory = await getApplicationDocumentsDirectory();
+        // Create temporary directory path - use system temp directly to avoid path_provider issues
+        final tempDir = Directory.systemTemp;
         final fileName = 'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
-        _recordingPath = '${directory.path}/$fileName';
+        _recordingPath = '${tempDir.path}\\$fileName';
 
-        await _audioRecorder.start(
-          RecordConfig(),
-          path: _recordingPath!,
-        );
+        print('Recording path: $_recordingPath');
 
-        setState(() {
-          _isRecording = true;
-        });
+        // Check if recording is supported
+        if (await _audioRecorder.hasPermission()) {
+          await _audioRecorder.start(
+            RecordConfig(
+              encoder: AudioEncoder.aacLc, // Use AAC-LC encoder for better compatibility
+              bitRate: 128000,
+              sampleRate: 44100,
+            ),
+            path: _recordingPath!,
+          );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recording started...')),
-        );
+          setState(() {
+            _isRecording = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Recording started...')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission not granted')),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Microphone permission is required for recording')),
         );
       }
     } catch (e) {
+      print('Error starting recording: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start recording: $e')),
       );
     }
+  }
+
+  void _showUnsupportedPlatformDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.orange),
+              SizedBox(width: 12),
+              Text('Platform Not Supported'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Audio recording is only supported on mobile platforms (Android & iOS).',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Please run this app on:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('• Android device or emulator'),
+              Text('• iPhone or iPad'),
+              SizedBox(height: 16),
+              Text(
+                'To run on Android:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '1. Connect an Android device or start an emulator',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+              Text(
+                '2. Run: flutter run -d android',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _stopRecording() async {
@@ -203,18 +284,17 @@ class RecordScreenState extends State<RecordScreen> {
 
     try {
       final file = File(filePath);
+      // Upload to backend (which handles Supabase upload and metadata saving)
       final downloadUrl = await _apiService.uploadAudioRecording(file, _currentUserPhone!);
 
-      // Save recording metadata to database
-      await _apiService.saveRecordingMetadata(
-        _currentUserPhone!,
-        downloadUrl,
-        DateTime.now().toIso8601String(),
-      );
+      print('✅ Recording uploaded successfully: $downloadUrl');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload recording: $e')),
-      );
+      print('❌ Error uploading recording: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload recording: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isUploading = false;

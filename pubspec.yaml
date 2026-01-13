@@ -52,6 +52,7 @@ dependencies:
   google_maps_flutter: ^2.6.1
   permission_handler: ^11.0.1
   http: ^1.2.1
+  http_parser: ^4.0.2
   background_fetch: ^1.2.1
   audioplayers: ^6.0.0
   flutter_dotenv: ^5.1.0
