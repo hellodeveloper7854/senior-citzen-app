@@ -409,7 +409,7 @@ class ApiService {
     final policeStation = userProfile?['police_station'] ?? 'Unknown';
 
     await _post('/complaints', {
-      'user_phone': userPhone,
+      'user_phone': userPhone.toString(), // Ensure it's a string
       'title': title,
       'description': description,
       'incident_date': incidentDate,

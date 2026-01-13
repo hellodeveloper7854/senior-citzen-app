@@ -439,24 +439,52 @@ app.post('/api/complaints', async (req, res) => {
     } = req.body;
 
     console.log('📝 New complaint registered');
-    console.log(`User Phone: ${user_phone}, Title: ${title}`);
+    console.log(`User Phone: ${user_phone} (type: ${typeof user_phone}), Title: ${title}`);
     console.log(`Police Station: ${police_station}, Location: ${location}`);
-    console.log(`Incident Date/Time: ${incident_date} ${incident_time}`);
+    console.log(`Incident Date: ${incident_date} (type: ${typeof incident_date}), Time: ${incident_time}`);
+
+    // Validate required fields
+    if (!user_phone || !title || !description) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({ error: 'user_phone, title, and description are required' });
+    }
+
+    // Prepare values - handle nulls and convert types
+    const values = [
+      String(user_phone),  // Ensure phone is string
+      title,
+      description,
+      police_station || null,
+      incident_date || null,
+      incident_time || null,
+      location || null,
+      'pending'  // Default status
+    ];
+
+    console.log('📊 Insert values:', values);
 
     const result = await pool.query(
       `INSERT INTO complaints (
         user_phone, title, description, police_station,
-        incident_date, incident_time, location
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        incident_date, incident_time, location, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [user_phone, title, description, police_station, incident_date, incident_time, location]
+      values
     );
 
-    console.log(`✅ Complaint created with ID: ${result.rows[0].id}`);
+    console.log(`✅ Complaint created with ID: ${result.rows[0].id}, Status: ${result.rows[0].status}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error creating complaint:', error);
-    res.status(500).json({ error: 'Failed to create complaint' });
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error constraint:', error.constraint);
+    console.error('❌ Error detail:', error.detail);
+    res.status(500).json({
+      error: 'Failed to create complaint',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 

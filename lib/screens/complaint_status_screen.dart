@@ -56,7 +56,8 @@ class ComplaintStatusScreenState extends State<ComplaintStatusScreen> {
     }
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String? status) {
+    if (status == null) return Colors.grey;
     switch (status) {
       case 'pending':
         return Colors.orange;
@@ -71,7 +72,8 @@ class ComplaintStatusScreenState extends State<ComplaintStatusScreen> {
     }
   }
 
-  String _getStatusText(String status) {
+  String _getStatusText(String? status) {
+    if (status == null) return 'Unknown';
     switch (status) {
       case 'pending':
         return 'Pending';
