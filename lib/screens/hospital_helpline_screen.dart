@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class HospitalHelplineScreen extends StatefulWidget {
   const HospitalHelplineScreen({super.key});
@@ -10,7 +10,7 @@ class HospitalHelplineScreen extends StatefulWidget {
 }
 
 class _HospitalHelplineScreenState extends State<HospitalHelplineScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _hospitals = [];
   bool _isLoading = true;
 
@@ -21,7 +21,7 @@ class _HospitalHelplineScreenState extends State<HospitalHelplineScreen> {
   }
 
   Future<void> _loadHospitals() async {
-    final hospitals = await _supabaseService.getHospitalContacts();
+    final hospitals = await _apiService.getHospitalContacts();
     if (mounted) {
       setState(() {
         _hospitals = hospitals;

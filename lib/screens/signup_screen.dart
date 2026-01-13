@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import '../utils/permission_utils.dart';
 import 'under_verification_screen.dart';
 import 'login_screen.dart';
@@ -48,7 +48,7 @@ class SignupScreenState extends State<SignupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
 
   // Optional profile image
   final ImagePicker _imagePicker = ImagePicker();
@@ -1062,7 +1062,7 @@ class SignupScreenState extends State<SignupScreen> {
       final phone = _contactNumberController.text.trim();
 
       // Check if email already exists
-      var existingUserByEmail = await _supabaseService.getUserCredentials(email);
+      var existingUserByEmail = await _apiService.getUserCredentials(email);
       if (existingUserByEmail != null) {
                 print(" phone number laready exist");
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email already Exists!')));
@@ -1070,7 +1070,7 @@ class SignupScreenState extends State<SignupScreen> {
       }
 
       // Check if phone number already exists
-      var existingUserByPhone = await _supabaseService.getUserCredentialsByPhone(phone);
+      var existingUserByPhone = await _apiService.getUserCredentialsByPhone(phone);
       if (existingUserByPhone != null) {
         print(" phone number laready exist");
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number already Exists!')));
@@ -1078,7 +1078,7 @@ class SignupScreenState extends State<SignupScreen> {
       }
 
       // Insert user credentials
-      await _supabaseService.insertUserCredentials(
+      await _apiService.registerCredentials(
         email,
         _passwordController.text,
         phone,
@@ -1089,7 +1089,7 @@ class SignupScreenState extends State<SignupScreen> {
       if (_pickedImage != null) {
         try {
           final file = File(_pickedImage!.path);
-          profilePhotoUrl = await _supabaseService.uploadProfilePhoto(
+          profilePhotoUrl = await _apiService.uploadProfilePhoto(
             file,
             phone,
           );
@@ -1128,18 +1128,18 @@ class SignupScreenState extends State<SignupScreen> {
         'profile_img': profilePhotoUrl,
       };
 
-      await _supabaseService.insertUserProfile(profileData);
+      await _apiService.insertUserProfile(profileData);
 
       // If user selected a photo but the URL wasn't set (upload failed earlier),
       // try uploading again and update the profile row.
       if (_pickedImage != null && (profilePhotoUrl == null || profilePhotoUrl.isEmpty)) {
         try {
           final file = File(_pickedImage!.path);
-          final uploadedUrl = await _supabaseService.uploadProfilePhoto(
+          final uploadedUrl = await _apiService.uploadProfilePhoto(
             file,
             phone,
           );
-          await _supabaseService.updateProfilePhotoUrl(
+          await _apiService.updateProfilePhotoUrl(
             phone,
             uploadedUrl,
           );

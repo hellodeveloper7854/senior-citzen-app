@@ -10,7 +10,8 @@ import 'helpline_screen.dart';
 import 'record_screen.dart';
 import 'track_me_screen.dart' as track_screen;
 import 'profile_screen.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
+import '../utils/image_util.dart';
 
 // Assuming you have a separate screen for support, let's include it
 // import 'support_screen.dart';
@@ -26,7 +27,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class DashboardScreenState extends State<DashboardScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   String _fullName = 'User'; // Default name
   String? _profilePhotoUrl;
 
@@ -57,24 +58,21 @@ class DashboardScreenState extends State<DashboardScreen> {
   // --- Data Loading Logic ---
   Future<void> _loadFullName() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
-          if (mounted) {
-            setState(() {
-              // Extract and capitalize the full name for the welcome message
-              final name = (profile?['full_name'] as String?)?.trim();
-              if (name != null && name.isNotEmpty) {
-                // Simple capitalization (assumes two words for the look in the image)
-                _fullName = name.split(' ').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '').join(' ');
-              }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final profile = await _apiService.getUserProfileByPhone(phoneNumber);
+        if (mounted) {
+          setState(() {
+            // Extract and capitalize the full name for the welcome message
+            final name = (profile?['full_name'] as String?)?.trim();
+            if (name != null && name.isNotEmpty) {
+              // Simple capitalization (assumes two words for the look in the image)
+              _fullName = name.split(' ').map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '').join(' ');
+            }
 
-              final url = profile?['profile_img'] as String?;
-              _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
-            });
-          }
+            final url = profile?['profile_img'] as String?;
+            _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
+          });
         }
       }
     } catch (_) {
@@ -95,48 +93,44 @@ class DashboardScreenState extends State<DashboardScreen> {
   // --- Check for Active SOS Alert ---
   Future<void> _checkActiveSOS() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final userPhone = credentials['phone_number'];
-          final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final alerts = await _apiService.getUserSOSAlerts(phoneNumber);
 
-          // Check if there's any active SOS alert within 15 minutes
-          final now = DateTime.now();
-          const duration = Duration(minutes: 15);
-          bool hasActiveAlert = false;
+        // Check if there's any active SOS alert within 15 minutes
+        final now = DateTime.now();
+        const duration = Duration(minutes: 15);
+        bool hasActiveAlert = false;
 
-          for (var alert in alerts) {
-            if (alert['status'] == 'active' && alert['alert_timestamp'] != null) {
-              try {
-                final alertTime = DateTime.parse(alert['alert_timestamp']);
-                final timeDifference = now.difference(alertTime);
+        for (var alert in alerts) {
+          if (alert['status'] == 'active' && alert['alert_timestamp'] != null) {
+            try {
+              final alertTime = DateTime.parse(alert['alert_timestamp']);
+              final timeDifference = now.difference(alertTime);
 
-                // If alert is within 15 minutes, consider it active
-                if (timeDifference <= duration) {
-                  hasActiveAlert = true;
-                  break;
-                } else {
-                  // Alert is older than 15 minutes, auto-expire it
-                  await _supabaseService.updateSOSAlertStatus(
-                    alert['id'],
-                    'expired',
-                    notes: 'Auto-expired after 15 minutes',
-                  );
-                }
-              } catch (e) {
-                print('Error parsing alert timestamp: $e');
+              // If alert is within 15 minutes, consider it active
+              if (timeDifference <= duration) {
+                hasActiveAlert = true;
+                break;
+              } else {
+                // Alert is older than 15 minutes, auto-expire it
+                await _apiService.updateSOSAlertStatus(
+                  alert['id'],
+                  'expired',
+                  notes: 'Auto-expired after 15 minutes',
+                );
               }
+            } catch (e) {
+              print('Error parsing alert timestamp: $e');
             }
           }
+        }
 
-          if (mounted) {
-            setState(() {
-              _hasActiveSOS = hasActiveAlert;
-              _isLoadingSOSStatus = false;
-            });
-          }
+        if (mounted) {
+          setState(() {
+            _hasActiveSOS = hasActiveAlert;
+            _isLoadingSOSStatus = false;
+          });
         }
       }
     } catch (e) {
@@ -152,19 +146,15 @@ class DashboardScreenState extends State<DashboardScreen> {
   // --- Check for Active Tracking Session ---
   Future<void> _checkActiveTracking() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final userPhone = credentials['phone_number'];
-          final activeSession = await _supabaseService.getActiveTrackingSession(userPhone);
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final activeSession = await _apiService.getActiveTrackingSession(phoneNumber);
 
-          if (mounted) {
-            setState(() {
-              _hasActiveTracking = activeSession != null;
-              _isLoadingTrackingStatus = false;
-            });
-          }
+        if (mounted) {
+          setState(() {
+            _hasActiveTracking = activeSession != null;
+            _isLoadingTrackingStatus = false;
+          });
         }
       }
     } catch (e) {
@@ -180,17 +170,13 @@ class DashboardScreenState extends State<DashboardScreen> {
   // --- Load Unread Notifications Count ---
   Future<void> _loadUnreadNotifications() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email == null) return;
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber == null) return;
 
-      final credentials = await _supabaseService.getUserCredentials(email);
-      if (credentials == null) return;
-
-      final userPhone = credentials['phone_number'];
       int unreadCount = 0;
 
       // 1. Count complaints with status updates (not 'pending')
-      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      final complaints = await _apiService.getUserComplaints(phoneNumber);
       for (var complaint in complaints) {
         // Count complaints that have been viewed or have status updates
         if (complaint['status'] != null &&
@@ -201,7 +187,7 @@ class DashboardScreenState extends State<DashboardScreen> {
       }
 
       // 2. Count SOS alerts with responses (resolved or with notes)
-      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      final sosAlerts = await _apiService.getUserSOSAlerts(phoneNumber);
       for (var alert in sosAlerts) {
         // Count alerts that have been resolved or have notes
         if ((alert['status'] == 'resolved' || alert['status'] == 'Request terminate' ||
@@ -354,17 +340,13 @@ class DashboardScreenState extends State<DashboardScreen> {
   // Fetch notifications from database
   Future<List<Map<String, dynamic>>> _fetchNotifications() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email == null) return [];
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber == null) return [];
 
-      final credentials = await _supabaseService.getUserCredentials(email);
-      if (credentials == null) return [];
-
-      final userPhone = credentials['phone_number'];
       List<Map<String, dynamic>> allNotifications = [];
 
       // Get complaints with status updates
-      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      final complaints = await _apiService.getUserComplaints(phoneNumber);
       for (var complaint in complaints) {
         if (complaint['status'] != null && complaint['status'] != 'pending') {
           allNotifications.add({
@@ -380,7 +362,7 @@ class DashboardScreenState extends State<DashboardScreen> {
       }
 
       // Get SOS alerts with responses
-      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      final sosAlerts = await _apiService.getUserSOSAlerts(phoneNumber);
       for (var alert in sosAlerts) {
         if (alert['status'] != 'active') {
           allNotifications.add({
@@ -743,9 +725,8 @@ class DashboardScreenState extends State<DashboardScreen> {
                     ),
                     child: CircleAvatar(
                       radius: screenWidth * 0.08,
-                      backgroundImage: _profilePhotoUrl != null
-                          ? MemoryImage(base64Decode(_profilePhotoUrl!))
-                          : const AssetImage('assets/elderly_woman.png') as ImageProvider,
+                      backgroundImage: ImageUtil.imageProviderFromString(_profilePhotoUrl) ??
+                          const AssetImage('assets/elderly_woman.png'),
                       backgroundColor: Colors.grey.shade200,
                     ),
                   ),

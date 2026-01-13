@@ -1,32 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/under_verification_screen.dart';
 import 'screens/rejected_screen.dart';
-import 'services/supabase_service.dart';
+import 'services/api_service.dart';
 import 'services/navigation_service.dart';
 import 'services/tracking_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'utils/permission_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // await Supabase.initialize(
-  //   url: 'https://tbxihxtvocurqsygfknk.supabase.co',
-  //   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRieGloeHR2b2N1cnFzeWdma25rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNjE5OTMsImV4cCI6MjA3MzkzNzk5M30.cLBscTAW3UaixNphFs-MYnvoRTKg0hMPtN6gbHoezt4',
-  // );
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
 
-
-
-  await Supabase.initialize(
-    url: 'https://alcqejmotzojjbasrjol.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsY3Flam1vdHpvampiYXNyam9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMzg3MDYsImV4cCI6MjA3NDYxNDcwNn0.9h22kaBiPksRsyGTwhPjzT5VAxYaSQ-z52r8KOJlAuY',
-  );
-
-//   VITE_SUPABASE_PROJECT_ID="tbxihxtvocurqsygfknk"
-// VITE_SUPABASE_PUBLISHABLE_KEY=""
-// VITE_SUPABASE_URL="https://tbxihxtvocurqsygfknk.supabase.co"
+  // The app now uses the direct PostgreSQL backend API
+  print('Initializing Police Mitra App with Backend API');
+  print('API Base URL: ${ApiService.baseUrl}');
 
   // Request permissions on app startup (for Android 13+ compatibility)
   // Handle Android 14 compatibility by wrapping in try-catch
@@ -51,25 +42,25 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
 
   Future<Widget> _getInitialScreen() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
+      final email = await _apiService.getCurrentUserEmail();
       if (email == null) {
         return const WelcomeScreen();
       }
 
-      final credentials = await _supabaseService.getUserCredentials(email);
+      final credentials = await _apiService.getUserCredentials(email);
       if (credentials == null) {
         return const WelcomeScreen();
       }
 
-      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      final profile = await _apiService.getUserProfileByPhone(credentials['phone_number']);
       if (profile == null) {
         return const WelcomeScreen();
       }
- 
+
       if (profile['status'] == 'verified') {
         return const DashboardScreen();
       } else if (profile['status'] == 'rejected') {

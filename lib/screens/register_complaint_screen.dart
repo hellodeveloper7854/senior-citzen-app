@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import 'complaint_status_screen.dart';
 
 class RegisterComplaintScreen extends StatefulWidget {
@@ -10,7 +10,7 @@ class RegisterComplaintScreen extends StatefulWidget {
 
 class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
   final _formKey = GlobalKey<FormState>();
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
 
   // Controllers
   final TextEditingController _titleController = TextEditingController();
@@ -40,14 +40,11 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
 
   Future<void> _loadCurrentUser() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          setState(() {
-            _currentUserPhone = credentials['phone_number'];
-          });
-        }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        setState(() {
+          _currentUserPhone = phoneNumber;
+        });
       }
     } catch (e) {
       // Handle error silently
@@ -97,7 +94,7 @@ class RegisterComplaintScreenState extends State<RegisterComplaintScreen> {
     });
 
     try {
-      await _supabaseService.submitComplaint(
+      await _apiService.submitComplaint(
         userPhone: _currentUserPhone!,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),

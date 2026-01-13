@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class UnderVerificationScreen extends StatefulWidget {
   final bool showProfileIcon;
@@ -13,7 +13,7 @@ class UnderVerificationScreen extends StatefulWidget {
 }
 
 class _UnderVerificationScreenState extends State<UnderVerificationScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   String? _policeStationNumber;
   String? _policeStationName;
   bool _isLoading = true;
@@ -26,47 +26,41 @@ class _UnderVerificationScreenState extends State<UnderVerificationScreen> {
 
   Future<void> _loadPoliceStationNumber() async {
     try {
-      // Get current user's email
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        // Get user credentials to find phone number
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final phone = credentials['phone_number'];
+      // Get current user's phone number directly
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        // Get user profile to find police station
+        final profile = await _apiService.getUserProfileByPhone(phoneNumber);
+        if (profile != null) {
+          final policeStation = profile['police_station'];
 
-          // Get user profile to find police station
-          final profile = await _supabaseService.getUserProfileByPhone(phone);
-          if (profile != null) {
-            final policeStation = profile['police_station'];
+          if (policeStation != null && policeStation.toString().isNotEmpty) {
+            setState(() {
+              _policeStationName = policeStation.toString();
+            });
 
-            if (policeStation != null && policeStation.toString().isNotEmpty) {
-              setState(() {
-                _policeStationName = policeStation.toString();
-              });
+            // Get police station contact number with SOS fallback
+            final contactNumber = await _apiService.getPoliceStationNumberWithSOSFallback(policeStation);
 
-              // Get police station contact number with SOS fallback
-              final contactNumber = await _supabaseService.getPoliceStationNumberWithSOSFallback(policeStation);
-
-              setState(() {
-                _policeStationNumber = contactNumber;
-                _isLoading = false;
-              });
-            } else {
-              // No police station assigned, just show SOS number
-              final sosNumber = await _supabaseService.getPoliceEmergencyNumber();
-              setState(() {
-                _policeStationNumber = sosNumber ?? '9326520525';
-                _policeStationName = 'Police Emergency';
-                _isLoading = false;
-              });
-            }
+            setState(() {
+              _policeStationNumber = contactNumber;
+              _isLoading = false;
+            });
+          } else {
+            // No police station assigned, just show SOS number
+            final sosNumber = await _apiService.getPoliceEmergencyNumber();
+            setState(() {
+              _policeStationNumber = sosNumber ?? '9326520525';
+              _policeStationName = 'Police Emergency';
+              _isLoading = false;
+            });
           }
         }
       }
     } catch (e) {
       print('Error loading police station number: $e');
       // Fallback to SOS number on error
-      final sosNumber = await _supabaseService.getPoliceEmergencyNumber();
+      final sosNumber = await _apiService.getPoliceEmergencyNumber();
       setState(() {
         _policeStationNumber = sosNumber ?? '9326520525';
         _policeStationName = 'Police Emergency';
@@ -171,8 +165,7 @@ class _UnderVerificationScreenState extends State<UnderVerificationScreen> {
                       IconButton(
                         icon: const Icon(Icons.logout, color: Colors.black),
                         onPressed: () async {
-                          final supabaseService = SupabaseService();
-                          await supabaseService.clearCurrentUser();
+                          await _apiService.clearCurrentUser();
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginScreen()),

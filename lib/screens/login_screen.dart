@@ -8,7 +8,7 @@ import 'signup_screen.dart';
 import 'dashboard_screen.dart';
 import 'under_verification_screen.dart';
 import 'rejected_screen.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -23,10 +23,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _forgotIdentifierController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   bool _isPasswordVisible = false;
 
-  // Hash password using SHA-256 (same method as in SupabaseService)
+  // Hash password using SHA-256 (same method as in ApiService)
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
@@ -44,36 +44,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      bool isEmail = identifier.contains('@');
-      var credentials = isEmail
-          ? await _supabaseService.getUserCredentials(identifier)
-          : await _supabaseService.getUserCredentialsByPhone(identifier);
-      if (credentials == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User doesn\'t exist')));
+      // Call backend login API
+      var loginResponse = await _apiService.login(identifier, password);
+
+      if (loginResponse == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login failed')));
         return;
       }
 
-      if (credentials['password'] != _hashPassword(password)) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please use correct password')));
-        return;
-      }
+      // Extract user info from response
+      var user = loginResponse['user'];
+      String phoneNumber = user['phone_number'];
+
+      print('Login successful for phone: $phoneNumber');
 
       // Get profile
-      var profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      var profile = await _apiService.getUserProfileByPhone(phoneNumber);
       if (profile == null) {
+        print('Profile not found for phone: $phoneNumber');
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile not found')));
         return;
       }
 
-      // Store current user email
-      await _supabaseService.setCurrentUserEmail(credentials['email']);
+      print('Profile data: $profile');
 
-      if (profile['status'] == 'verified') {
+      // Store current user email
+      await _apiService.setCurrentUserEmail(user['email']);
+
+      // Store current user phone number for profile loading
+      await _apiService.setCurrentUserPhoneNumber(phoneNumber);
+
+      // Check user status - default to pending if not set
+      String userStatus = profile['status'] ?? 'pending';
+      print('User status: $userStatus');
+
+      if (userStatus == 'verified') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
-      } else if (profile['status'] == 'rejected') {
+      } else if (userStatus == 'rejected') {
         // Navigate to rejected screen with rejection reason
         Navigator.pushReplacement(
           context,
@@ -91,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      print('Login error: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
@@ -142,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
 
                 try {
-                  await _supabaseService.updatePassword(identifier, newPass);
+                  await _apiService.updatePassword(identifier, newPass);
                   _forgotIdentifierController.clear();
                   _newPasswordController.clear();
                   _confirmPasswordController.clear();

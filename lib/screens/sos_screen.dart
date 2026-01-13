@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import '../services/navigation_service.dart';
 import '../utils/crypto_util.dart';
+import '../utils/image_util.dart';
 import '../utils/permission_utils.dart';
 
 class SosScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class SosScreen extends StatefulWidget {
 }
 
 class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMixin {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   String _currentLocation = 'Getting location...';
@@ -91,14 +92,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   // Check if user already has an active SOS alert
   Future<bool> _checkExistingActiveSOS() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email == null) return false;
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber == null) return false;
 
-      final credentials = await _supabaseService.getUserCredentials(email);
-      if (credentials == null) return false;
-
-      final userPhone = credentials['phone_number'];
-      final alerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      final alerts = await _apiService.getUserSOSAlerts(phoneNumber);
 
       // Check if there's any active SOS alert within 15 minutes
       final now = DateTime.now();
@@ -124,7 +121,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
               return true;
             } else {
               // Alert is older than 15 minutes, auto-expire it
-              await _supabaseService.updateSOSAlertStatus(
+              await _apiService.updateSOSAlertStatus(
                 alert['id'],
                 'expired',
                 notes: 'Auto-expired after 15 minutes',
@@ -417,15 +414,14 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
 
   Future<void> _sendSOSAlertToAdmin(Position position) async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email == null) return;
-      final credentials = await _supabaseService.getUserCredentials(email);
-      if (credentials == null) return;
-      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber == null) return;
+
+      final profile = await _apiService.getUserProfileByPhone(phoneNumber);
       if (profile == null) return;
       List<String> emergencyContacts = _emergencyContacts.map((contact) => contact['number'] as String).toList();
-      final alertId = await _supabaseService.createSOSAlert(
-        userId: credentials['phone_number'],
+      final alertId = await _apiService.createSOSAlert(
+        userId: phoneNumber,
         userName: profile['full_name'] ?? 'Unknown User',
         latitude: position.latitude,
         longitude: position.longitude,
@@ -446,13 +442,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
 
   Future<void> _loadEmergencyContactsAndProfile() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email == null) return;
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber == null) return;
 
-      final credentials = await _supabaseService.getUserCredentials(email);
-      if (credentials == null) return;
-
-      final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
+      final profile = await _apiService.getUserProfileByPhone(phoneNumber);
       if (profile == null || !mounted) return;
 
       // Decrypt contact numbers in parallel for speed
@@ -478,7 +471,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
               'relation': profile['emergency_contact_2_relation'] ?? 'Contact'
             },
         ];
-        final url = profile['profile_img'] as String?;
+        final url = (profile['profile_img'] as String?) ?? (profile['profile_photo_url'] as String?);
         _profilePhotoUrl = (url != null && url.trim().isNotEmpty) ? url.trim() : null;
       });
     } catch (e) {
@@ -492,14 +485,11 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     // Get user's name from cached profile data (already loaded)
     String userName = 'Unknown User';
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
-          if (profile != null && profile['full_name'] != null) {
-            userName = profile['full_name'];
-          }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final profile = await _apiService.getUserProfileByPhone(phoneNumber);
+        if (profile != null && profile['full_name'] != null) {
+          userName = profile['full_name'];
         }
       }
     } catch (e) {
@@ -511,7 +501,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     // Extract phone numbers from emergency contacts
     final phoneNumbers = _emergencyContacts.map((contact) => contact['number'] as String).toList();
 
-    // Send SMS using Supabase Edge Function
+    // Send SMS
     _sendSMSToContacts(phoneNumbers, locationMessage).then((_) {
       if (mounted) {
         _showLocalNotification('Emergency Alert Sent', 'Location shared with emergency contacts');
@@ -519,10 +509,10 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     });
   }
 
-  // New method to send SMS using Supabase Edge Function
+  // Method to send SMS to contacts
   Future<void> _sendSMSToContacts(List<String> phoneNumbers, String message) async {
     for (final phoneNumber in phoneNumbers) {
-      await _supabaseService.sendSMS(phoneNumber, message);
+      await _apiService.sendSMS(phoneNumber, message);
     }
   }
 
@@ -583,7 +573,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     if (_currentAlertId == null) return;
 
     try {
-      await _supabaseService.updateSOSAlertStatus(
+      await _apiService.updateSOSAlertStatus(
         _currentAlertId!,
         'Request terminate',
         notes: 'User terminated the SOS alert from the app',
@@ -640,7 +630,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   // Load emergency phone number from database based on service name
   Future<void> _loadEmergencyPhoneNumber(String serviceName) async {
     try {
-      final phoneNumber = await _supabaseService.getEmergencyPhoneNumber(serviceName);
+      final phoneNumber = await _apiService.getEmergencyPhoneNumber(serviceName);
       if (phoneNumber != null && mounted) {
         setState(() {
           _emergencyPhoneNumber = phoneNumber;
@@ -696,15 +686,14 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
             child: CircleAvatar(
               radius: avatarRadius,
               backgroundColor: Colors.white,
-              child: CircleAvatar(
-                radius: avatarRadius * 0.93,
-                backgroundImage: _profilePhotoUrl != null
-                    ? MemoryImage(base64Decode(_profilePhotoUrl!))
-                    : AssetImage(_defaultUserAvatarPath) as ImageProvider,
-                backgroundColor: Colors.grey.shade200,
+                child: CircleAvatar(
+                  radius: avatarRadius * 0.93,
+                  backgroundImage: (ImageUtil.imageProviderFromString(_profilePhotoUrl) ??
+                      AssetImage(_defaultUserAvatarPath)) as ImageProvider,
+                  backgroundColor: Colors.grey.shade200,
+                ),
               ),
             ),
-          ),
           // Police Avatar (Left) - Male Officer
           Positioned(
             left: 0,

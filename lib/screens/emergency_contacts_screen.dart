@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/supabase_service.dart'; // Assuming these services are available
+import '../services/api_service.dart'; // Assuming these services are available
 import '../utils/crypto_util.dart'; // Assuming this utility is available
 import '../utils/permission_utils.dart'; // Import PermissionUtils
 
@@ -31,7 +31,7 @@ class SelectEmergencyContactScreen extends StatefulWidget {
 
 class _SelectEmergencyContactScreenState
     extends State<SelectEmergencyContactScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
   List<EmergencyContact> _contacts = [];
@@ -49,30 +49,24 @@ class _SelectEmergencyContactScreenState
   // --- Data Loading and Decryption ---
   Future<void> _loadUserProfile() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final profile = await _supabaseService
-              .getUserProfileByPhone(credentials['phone_number']);
-          if (profile != null) {
-            // Decrypting the contact numbers as done in the original code
-            profile['emergency_contact_1_number'] =
-            await CryptoUtil.decryptString(
-                profile['emergency_contact_1_number']);
-            profile['emergency_contact_2_number'] =
-            await CryptoUtil.decryptString(
-                profile['emergency_contact_2_number']);
-          }
-
-          setState(() {
-            _userProfile = profile;
-            _contacts = _extractContacts(profile);
-            _isLoading = false;
-          });
-        } else {
-          setState(() => _isLoading = false);
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final profile = await _apiService.getUserProfileByPhone(phoneNumber);
+        if (profile != null) {
+          // Decrypting the contact numbers as done in the original code
+          profile['emergency_contact_1_number'] =
+          await CryptoUtil.decryptString(
+              profile['emergency_contact_1_number']);
+          profile['emergency_contact_2_number'] =
+          await CryptoUtil.decryptString(
+              profile['emergency_contact_2_number']);
         }
+
+        setState(() {
+          _userProfile = profile;
+          _contacts = _extractContacts(profile);
+          _isLoading = false;
+        });
       } else {
         setState(() => _isLoading = false);
       }

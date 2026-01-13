@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../utils/crypto_util.dart';
 import 'package:http/http.dart' as http;
 
-class SupabaseService {
+class ApiService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // Store current user email

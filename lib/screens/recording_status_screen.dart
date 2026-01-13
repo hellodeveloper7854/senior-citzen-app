@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class RecordingStatusScreen extends StatefulWidget {
   const RecordingStatusScreen({super.key});
@@ -10,7 +10,7 @@ class RecordingStatusScreen extends StatefulWidget {
 }
 
 class RecordingStatusScreenState extends State<RecordingStatusScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   final AudioPlayer _audioPlayer = AudioPlayer();
   List<Map<String, dynamic>> _recordings = [];
   bool _isLoading = true;
@@ -32,17 +32,14 @@ class RecordingStatusScreenState extends State<RecordingStatusScreen> {
 
   Future<void> _loadUserRecordings() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          _userPhone = credentials['phone_number'];
-          final recordings = await _supabaseService.getUserRecordings(_userPhone!);
-          setState(() {
-            _recordings = recordings;
-            _isLoading = false;
-          });
-        }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        _userPhone = phoneNumber;
+        final recordings = await _apiService.getUserRecordings(_userPhone!);
+        setState(() {
+          _recordings = recordings;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       setState(() {

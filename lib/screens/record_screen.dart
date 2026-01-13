@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import '../utils/permission_utils.dart';
 import 'recording_status_screen.dart';
 
@@ -15,7 +15,7 @@ class RecordScreen extends StatefulWidget {
 
 class RecordScreenState extends State<RecordScreen> {
   final AudioRecorder _audioRecorder = AudioRecorder();
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   bool _isRecording = false;
   bool _isUploading = false;
   String? _recordingPath;
@@ -35,14 +35,11 @@ class RecordScreenState extends State<RecordScreen> {
 
   Future<void> _loadCurrentUser() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          setState(() {
-            _currentUserPhone = credentials['phone_number'];
-          });
-        }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        setState(() {
+          _currentUserPhone = phoneNumber;
+        });
       }
     } catch (e) {
       // Handle error silently
@@ -206,10 +203,10 @@ class RecordScreenState extends State<RecordScreen> {
 
     try {
       final file = File(filePath);
-      final downloadUrl = await _supabaseService.uploadAudioRecording(file, _currentUserPhone!);
+      final downloadUrl = await _apiService.uploadAudioRecording(file, _currentUserPhone!);
 
       // Save recording metadata to database
-      await _supabaseService.saveRecordingMetadata(
+      await _apiService.saveRecordingMetadata(
         _currentUserPhone!,
         downloadUrl,
         DateTime.now().toIso8601String(),

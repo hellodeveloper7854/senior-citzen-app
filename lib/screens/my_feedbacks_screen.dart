@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class MyFeedbacksScreen extends StatefulWidget {
   const MyFeedbacksScreen({super.key});
@@ -9,7 +9,7 @@ class MyFeedbacksScreen extends StatefulWidget {
 }
 
 class _MyFeedbacksScreenState extends State<MyFeedbacksScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _feedbacks = [];
   bool _isLoading = true;
 
@@ -21,19 +21,13 @@ class _MyFeedbacksScreenState extends State<MyFeedbacksScreen> {
 
   Future<void> _loadFeedbacks() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final userPhone = credentials['phone_number'];
-          final feedbacks = await _supabaseService.getUserFeedback(userPhone);
-          setState(() {
-            _feedbacks = feedbacks;
-            _isLoading = false;
-          });
-        } else {
-          setState(() => _isLoading = false);
-        }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        final feedbacks = await _apiService.getUserFeedback(phoneNumber);
+        setState(() {
+          _feedbacks = feedbacks;
+          _isLoading = false;
+        });
       } else {
         setState(() => _isLoading = false);
       }

@@ -9,7 +9,9 @@
       "Bash(flutter pub get:*)",
       "Bash(flutter build:*)",
       "Bash(dir:*)",
-      "Bash(nul:*)"
+      "Bash(nul:*)",
+      "Bash(find:*)",
+      "Bash(node server.js)"
     ],
     "deny": [],
     "ask": []

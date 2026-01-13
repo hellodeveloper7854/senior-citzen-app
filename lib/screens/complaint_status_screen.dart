@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class ComplaintStatusScreen extends StatefulWidget {
   const ComplaintStatusScreen({super.key});
@@ -9,7 +9,7 @@ class ComplaintStatusScreen extends StatefulWidget {
 }
 
 class ComplaintStatusScreenState extends State<ComplaintStatusScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _complaints = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -22,19 +22,31 @@ class ComplaintStatusScreenState extends State<ComplaintStatusScreen> {
 
   Future<void> _loadUserComplaints() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          _userPhone = credentials['phone_number'];
-          final complaints = await _supabaseService.getUserComplaints(_userPhone!);
-          setState(() {
-            _complaints = complaints;
-            _isLoading = false;
-          });
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      print('📱 Loading complaints for phone: $phoneNumber');
+
+      if (phoneNumber != null) {
+        _userPhone = phoneNumber;
+        final complaints = await _apiService.getUserComplaints(_userPhone!);
+
+        print('✅ Retrieved ${complaints.length} complaints');
+        for (var complaint in complaints) {
+          print('  - Complaint: ${complaint['title']}, user_phone: ${complaint['user_phone']}, status: ${complaint['status']}');
         }
+
+        setState(() {
+          _complaints = complaints;
+          _isLoading = false;
+        });
+        print('✅ State updated with ${complaints.length} complaints');
+      } else {
+        print('❌ Phone number is null');
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
+      print('❌ Error loading complaints: $e');
       setState(() {
         _isLoading = false;
       });

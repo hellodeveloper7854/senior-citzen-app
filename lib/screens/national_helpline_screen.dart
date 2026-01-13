@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class NationalHelplineScreen extends StatefulWidget {
   const NationalHelplineScreen({super.key});
@@ -10,7 +10,7 @@ class NationalHelplineScreen extends StatefulWidget {
 }
 
 class _NationalHelplineScreenState extends State<NationalHelplineScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _helplines = [];
   bool _isLoading = true;
 
@@ -21,7 +21,7 @@ class _NationalHelplineScreenState extends State<NationalHelplineScreen> {
   }
 
   Future<void> _loadHelplines() async {
-    final helplines = await _supabaseService.getNationalHelplines();
+    final helplines = await _apiService.getNationalHelplines();
     if (mounted) {
       setState(() {
         _helplines = helplines;

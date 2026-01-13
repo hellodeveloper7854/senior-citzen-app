@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 
 class SOSAlertsScreen extends StatefulWidget {
   const SOSAlertsScreen({super.key});
@@ -9,7 +9,7 @@ class SOSAlertsScreen extends StatefulWidget {
 }
 
 class SOSAlertsScreenState extends State<SOSAlertsScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _sosAlerts = [];
   bool _isLoading = true;
   String? _userPhone;
@@ -22,17 +22,14 @@ class SOSAlertsScreenState extends State<SOSAlertsScreen> {
 
   Future<void> _loadUserSOSAlerts() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          _userPhone = credentials['phone_number'];
-          final alerts = await _supabaseService.getUserSOSAlerts(_userPhone!);
-          setState(() {
-            _sosAlerts = alerts;
-            _isLoading = false;
-          });
-        }
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        _userPhone = phoneNumber;
+        final alerts = await _apiService.getUserSOSAlerts(_userPhone!);
+        setState(() {
+          _sosAlerts = alerts;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       setState(() {

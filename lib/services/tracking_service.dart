@@ -3,7 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'dart:math';
-import 'supabase_service.dart';
+import 'api_service.dart';
 import 'navigation_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -31,7 +31,7 @@ class TrackingService extends ChangeNotifier {
   Timer? _durationTimer; // Timer to check duration expiry
   Timer? _continuationCheckTimer; // Timer to check if user wants to continue
   StreamSubscription<Position>? _positionStream;
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
 
   // Getters
@@ -51,12 +51,12 @@ class TrackingService extends ChangeNotifier {
 
     // Load user data and check for existing tracking session
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
+      final email = await _apiService.getCurrentUserEmail();
       if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
+        final credentials = await _apiService.getUserCredentials(email);
         if (credentials != null) {
           _userPhone = credentials['phone_number'];
-          final profile = await _supabaseService.getUserProfileByPhone(_userPhone!);
+          final profile = await _apiService.getUserProfileByPhone(_userPhone!);
           if (profile != null) {
             _userName = profile['full_name'] ?? 'Unknown User';
           }
@@ -93,7 +93,7 @@ class TrackingService extends ChangeNotifier {
     if (_userPhone == null) return;
 
     try {
-      final activeSession = await _supabaseService.getActiveTrackingSession(_userPhone!);
+      final activeSession = await _apiService.getActiveTrackingSession(_userPhone!);
 
       if (activeSession != null) {
         print('TrackingService: Found existing active tracking session');
@@ -163,8 +163,8 @@ class TrackingService extends ChangeNotifier {
         _sessionEndTime = null;
       }
 
-      print('Calling SupabaseService.startTrackingSession...');
-      await _supabaseService.startTrackingSession(
+      print('Calling ApiService.startTrackingSession...');
+      await _apiService.startTrackingSession(
         userPhone: _userPhone!,
         userName: _userName ?? 'Unknown User',
         latitude: currentPosition.latitude,
@@ -227,7 +227,7 @@ class TrackingService extends ChangeNotifier {
       await _cancelPersistentTrackingNotification();
 
       if (_userPhone != null) {
-        await _supabaseService.stopTrackingSession(_userPhone!);
+        await _apiService.stopTrackingSession(_userPhone!);
       }
 
       _isTracking = false;
@@ -266,7 +266,7 @@ class TrackingService extends ChangeNotifier {
       _destinationAddress = newDestinationAddress;
 
       // Update in database
-      await _supabaseService.updateTrackingDestination(
+      await _apiService.updateTrackingDestination(
         userPhone: _userPhone!,
         destinationLatitude: newDestination.latitude,
         destinationLongitude: newDestination.longitude,
@@ -348,7 +348,7 @@ class TrackingService extends ChangeNotifier {
     if (_userPhone == null || _currentPosition == null || !_isTracking) return;
 
     try {
-      await _supabaseService.updateTrackingLocation(
+      await _apiService.updateTrackingLocation(
         userPhone: _userPhone!,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,

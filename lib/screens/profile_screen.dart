@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:aadharwad/screens/welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import '../utils/crypto_util.dart';
+import '../utils/image_util.dart';
 import './edit_profile_screen.dart';
 import './complaint_status_screen.dart';
 import './recording_status_screen.dart';
@@ -18,7 +19,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-   final SupabaseService _supabaseService = SupabaseService();
+   final ApiService _apiService = ApiService();
    Map<String, dynamic>? _userProfile;
    bool _isLoading = true;
    int _rating = 0;
@@ -33,39 +34,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserProfile() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          final profile = await _supabaseService.getUserProfileByPhone(credentials['phone_number']);
-          if (profile != null) {
-            try {
-              profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
-            } catch (e) {
-              // Keep raw value if decryption fails
-            }
-            try {
-              profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
-            } catch (e) {
-              // Keep raw value if decryption fails
-            }
-            try {
-              profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
-            } catch (e) {
-              // Keep raw value if decryption fails
-            }
+      print('🔄 Loading user profile...');
+
+      // Get the phone number directly from login session
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      print('📱 Current user phone: $phoneNumber');
+
+      if (phoneNumber == null) {
+        print('❌ Phone number is null - user not logged in');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Fetch profile directly using phone number
+      final profile = await _apiService.getUserProfileByPhone(phoneNumber);
+      print('📋 Profile data received: ${profile != null}');
+
+      if (profile != null) {
+        print('👤 Profile keys: ${profile.keys.toList()}');
+        print('📛 Profile full_name: ${profile['full_name']}');
+
+        // Try decryption but don't let failures prevent profile display
+        try {
+          if (profile['aadhar_number'] != null) {
+            profile['aadhar_number'] = await CryptoUtil.decryptString(profile['aadhar_number']);
+            print('✅ Aadhar decrypted successfully');
           }
-          setState(() {
-            _userProfile = profile;
-            _isLoading = false;
-          });
-        } else {
-          setState(() => _isLoading = false);
+        } catch (e) {
+          print('⚠️ Error decrypting aadhar: $e');
+          // Keep raw value if decryption fails
         }
+        try {
+          if (profile['emergency_contact_1_number'] != null) {
+            profile['emergency_contact_1_number'] = await CryptoUtil.decryptString(profile['emergency_contact_1_number']);
+            print('✅ Emergency contact 1 decrypted successfully');
+          }
+        } catch (e) {
+          print('⚠️ Error decrypting emergency_contact_1: $e');
+          // Keep raw value if decryption fails
+        }
+        try {
+          if (profile['emergency_contact_2_number'] != null) {
+            profile['emergency_contact_2_number'] = await CryptoUtil.decryptString(profile['emergency_contact_2_number']);
+            print('✅ Emergency contact 2 decrypted successfully');
+          }
+        } catch (e) {
+          print('⚠️ Error decrypting emergency_contact_2: $e');
+          // Keep raw value if decryption fails
+        }
+
+        print('✅ Setting profile state...');
+        setState(() {
+          _userProfile = profile;
+          _isLoading = false;
+        });
+        print('✅ Profile state set successfully');
       } else {
+        print('❌ Profile is null');
         setState(() => _isLoading = false);
       }
     } catch (e) {
+      print('❌ Error loading profile: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -75,6 +104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
+
+    final profileImageValue = (_userProfile?['profile_img'] as String?) ?? (_userProfile?['profile_photo_url'] as String?);
+    final profileImageProvider = ImageUtil.imageProviderFromString(profileImageValue);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7FA),
@@ -191,9 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: screenWidth * 0.125,
-                                  backgroundImage: _userProfile!['profile_img'] != null
-                                      ? MemoryImage(base64Decode(_userProfile!['profile_img']))
-                                      : const AssetImage('assets/Ellipse.png') as ImageProvider,
+                                  backgroundImage: (profileImageProvider ?? const AssetImage('assets/Ellipse.png')) as ImageProvider,
                                 ),
                                 Positioned(
                                   bottom: 0,
@@ -709,9 +739,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     setState(() => isLoading = true);
 
                     try {
-                      final email = await _supabaseService.getCurrentUserEmail();
+                      final email = await _apiService.getCurrentUserEmail();
                       if (email != null) {
-                        await _supabaseService.updatePassword(email, newPasswordController.text);
+                        await _apiService.updatePassword(email, newPasswordController.text);
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Password updated successfully')),
@@ -780,7 +810,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () async {
                 // Clear user session
-                await _supabaseService.clearCurrentUser();
+                await _apiService.clearCurrentUser();
 
                 // Navigate to welcome screen and clear navigation stack
                 Navigator.of(context).pushAndRemoveUntil(
@@ -975,7 +1005,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final phoneNumber = _userProfile!['contact_number'];
-      await _supabaseService.submitFeedback(
+      await _apiService.submitFeedback(
         userPhone: phoneNumber,
         rating: _rating,
         feedback: _feedbackController.text.trim(),

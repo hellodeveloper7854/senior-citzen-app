@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
+import '../utils/image_util.dart';
 import '../utils/permission_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   final ImagePicker _imagePicker = ImagePicker();
 
   // controllers
@@ -195,7 +196,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (_pickedImage != null) {
         final file = File(_pickedImage!.path);
-        photoUrl = await _supabaseService.uploadProfilePhoto(file, contactNumber);
+        photoUrl = await _apiService.uploadProfilePhoto(file, contactNumber);
       }
 
       final updates = <String, dynamic>{
@@ -223,7 +224,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         updates['profile_img'] = photoUrl;
       }
 
-      await _supabaseService.updateUserProfile(contactNumber, updates);
+      await _apiService.updateUserProfile(contactNumber, updates);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
@@ -292,9 +293,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         radius: 60,
                         backgroundImage: _pickedImage != null
                             ? FileImage(File(_pickedImage!.path))
-                            : (_currentPhotoUrl != null && _currentPhotoUrl!.isNotEmpty
-                                ? MemoryImage(base64Decode(_currentPhotoUrl!))
-                                : const AssetImage('assets/Ellipse.png')) as ImageProvider,
+                            : ((ImageUtil.imageProviderFromString(_currentPhotoUrl) ??
+                                    const AssetImage('assets/Ellipse.png'))
+                                as ImageProvider),
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(

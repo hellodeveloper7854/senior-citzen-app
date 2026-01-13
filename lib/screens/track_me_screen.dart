@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:async';
 import 'dart:math';
-import '../services/supabase_service.dart';
+import '../services/api_service.dart';
 import '../services/navigation_service.dart';
 import '../services/tracking_service.dart';
 import '../services/route_service.dart';
@@ -43,7 +43,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   bool _showPredictions = false;
 
   // Tracking related variables
-  final SupabaseService _supabaseService = SupabaseService();
+  final ApiService _apiService = ApiService();
   final TrackingService _trackingService = TrackingService();
   final RouteService _routeService = RouteService();
   String? _userPhone;
@@ -575,19 +575,16 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Load user data
   Future<void> _loadUserData() async {
     try {
-      final email = await _supabaseService.getCurrentUserEmail();
-      if (email != null) {
-        final credentials = await _supabaseService.getUserCredentials(email);
-        if (credentials != null) {
-          _userPhone = credentials['phone_number'];
-          final profile = await _supabaseService.getUserProfileByPhone(_userPhone!);
-          if (profile != null) {
-            _userName = profile['full_name'] ?? 'Unknown User';
-          }
-
-          // Note: Existing tracking session is now handled by TrackingService
-          // No need to check here as it's already initialized in main.dart
+      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+      if (phoneNumber != null) {
+        _userPhone = phoneNumber;
+        final profile = await _apiService.getUserProfileByPhone(_userPhone!);
+        if (profile != null) {
+          _userName = profile['full_name'] ?? 'Unknown User';
         }
+
+        // Note: Existing tracking session is now handled by TrackingService
+        // No need to check here as it's already initialized in main.dart
       }
     } catch (e) {
       print('Error loading user data: $e');
@@ -597,7 +594,7 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   // Load emergency phone number from database based on service name (same as SOS screen)
   Future<void> _loadEmergencyPhoneNumber(String serviceName) async {
     try {
-      final phoneNumber = await _supabaseService.getEmergencyPhoneNumber(serviceName);
+      final phoneNumber = await _apiService.getEmergencyPhoneNumber(serviceName);
       if (phoneNumber != null && mounted) {
         setState(() {
           _emergencyPhoneNumber = phoneNumber;

@@ -2,12 +2,10 @@
 // Uses AES-CBC with fixed key and IV, matching the Flutter app.
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
 
-const supabaseUrl = 'https://alcqejmotzojjbasrjol.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsY3Flam1vdHpvampiYXNyam9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMzg3MDYsImV4cCI6MjA3NDYxNDcwNn0.9h22kaBiPksRsyGTwhPjzT5VAxYaSQ-z52r8KOJlAuY';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Backend API Configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
 const KEY = CryptoJS.enc.Utf8.parse('ThaneMitrSecretKey1234567890abcd'); // 32 bytes
 const IV = CryptoJS.enc.Utf8.parse('VectorInit123456'); // 16 bytes
@@ -53,122 +51,128 @@ function AdminPanel() {
   }, [activeTab]);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase.from('registrations').select('*');
-    if (error) {
-      console.error(error);
-      return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+
+      // Decrypt sensitive fields
+      const decryptedUsers = data.map((user) => ({
+        ...user,
+        aadhar_number: decryptText(user.aadhar_number),
+        emergency_contact_1_number: decryptText(user.emergency_contact_1_number),
+        emergency_contact_2_number: decryptText(user.emergency_contact_2_number),
+      }));
+
+      setUsers(decryptedUsers);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setLoading(false);
     }
-
-    // Decrypt sensitive fields
-    const decryptedUsers = data.map((user) => ({
-      ...user,
-      aadhar_number: decryptText(user.aadhar_number),
-      emergency_contact_1_number: decryptText(user.emergency_contact_1_number),
-      emergency_contact_2_number: decryptText(user.emergency_contact_2_number),
-    }));
-
-    setUsers(decryptedUsers);
-    setLoading(false);
   };
 
   const fetchRecordings = async () => {
-    const { data, error } = await supabase
-      .from('audio_recordings')
-      .select('*, registrations(full_name, contact_number)')
-      .order('recorded_at', { ascending: false });
+    try {
+      const response = await fetch(`${API_BASE_URL}/recordings`);
+      if (!response.ok) throw new Error('Failed to fetch recordings');
+      const data = await response.json();
 
-    if (error) {
-      console.error(error);
-      return;
+      setRecordings(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching recordings:', error);
+      setLoading(false);
     }
-
-    setRecordings(data);
-    setLoading(false);
   };
 
   const fetchComplaints = async () => {
-    const { data, error } = await supabase
-      .from('complaints')
-      .select('*, registrations(full_name, contact_number)')
-      .order('submitted_at', { ascending: false });
+    try {
+      const response = await fetch(`${API_BASE_URL}/complaints`);
+      if (!response.ok) throw new Error('Failed to fetch complaints');
+      const data = await response.json();
 
-    if (error) {
-      console.error(error);
-      return;
+      setComplaints(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+      setLoading(false);
     }
-
-    setComplaints(data);
-    setLoading(false);
   };
 
   const fetchSOSAlerts = async () => {
-    const { data, error } = await supabase
-      .from('sos_alerts')
-      .select('*')
-      .order('alert_timestamp', { ascending: false });
+    try {
+      const response = await fetch(`${API_BASE_URL}/sos-alerts`);
+      if (!response.ok) throw new Error('Failed to fetch SOS alerts');
+      const data = await response.json();
 
-    if (error) {
-      console.error(error);
-      return;
+      setSosAlerts(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching SOS alerts:', error);
+      setLoading(false);
     }
-
-    setSosAlerts(data);
-    setLoading(false);
   };
 
   const updateRecordingStatus = async (recordingId, status) => {
-    const { error } = await supabase
-      .from('audio_recordings')
-      .update({ status })
-      .eq('id', recordingId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/recordings/${recordingId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
 
-    if (error) {
-      console.error(error);
-      return;
+      if (!response.ok) throw new Error('Failed to update recording status');
+
+      // Refresh recordings
+      fetchRecordings();
+    } catch (error) {
+      console.error('Error updating recording status:', error);
     }
-
-    // Refresh recordings
-    fetchRecordings();
   };
 
   const updateComplaintStatus = async (complaintId, status, adminNotes = '') => {
-    const { error } = await supabase
-      .from('complaints')
-      .update({ status, admin_notes: adminNotes })
-      .eq('id', complaintId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/complaints/${complaintId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status, admin_notes: adminNotes }),
+      });
 
-    if (error) {
-      console.error(error);
-      return;
+      if (!response.ok) throw new Error('Failed to update complaint status');
+
+      // Refresh complaints
+      fetchComplaints();
+    } catch (error) {
+      console.error('Error updating complaint status:', error);
     }
-
-    // Refresh complaints
-    fetchComplaints();
   };
 
   const updateSOSAlertStatus = async (alertId, status, resolvedBy = '', notes = '') => {
-    const updateData = {
-      status,
-      resolved_by: resolvedBy,
-      notes
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/sos-alerts/${alertId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          resolved_by: resolvedBy,
+          notes
+        }),
+      });
 
-    if (status !== 'active') {
-      updateData.resolved_at = new Date().toISOString();
+      if (!response.ok) throw new Error('Failed to update SOS alert status');
+
+      // Refresh SOS alerts
+      fetchSOSAlerts();
+    } catch (error) {
+      console.error('Error updating SOS alert status:', error);
     }
-
-    const { error } = await supabase
-      .from('sos_alerts')
-      .update(updateData)
-      .eq('id', alertId);
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    // Refresh SOS alerts
-    fetchSOSAlerts();
   };
 
   const formatDate = (dateString) => {
