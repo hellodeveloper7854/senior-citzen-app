@@ -351,11 +351,11 @@ app.get('/api/recordings/:id', async (req, res) => {
 // Create new audio recording
 app.post('/api/recordings', upload.single('audio'), async (req, res) => {
   try {
-    const { user_phone, police_station, duration } = req.body;
+    const { user_phone, police_station } = req.body;
     const audioFile = req.file;
 
     console.log('🎙️ New audio recording received');
-    console.log(`User Phone: ${user_phone}, Duration: ${duration}s`);
+    console.log(`User Phone: ${user_phone}`);
     console.log(`Police Station: ${police_station}`);
     console.log(`Has audio file: ${!!audioFile}`);
 
@@ -374,10 +374,10 @@ app.post('/api/recordings', upload.single('audio'), async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO audio_recordings (user_phone, audio_url, police_station, duration)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO audio_recordings (user_phone, audio_url, police_station)
+       VALUES ($1, $2, $3)
        RETURNING *`,
-      [user_phone, audioUrl, police_station, duration]
+      [user_phone, audioUrl, police_station]
     );
 
     console.log(`✅ Audio recording created with ID: ${result.rows[0].id}`);
