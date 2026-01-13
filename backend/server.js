@@ -650,6 +650,79 @@ app.get('/api/national-helplines', async (req, res) => {
   }
 });
 
+// ==================== USER FEEDBACK ENDPOINTS ====================
+
+// Get all feedback
+app.get('/api/feedback', async (req, res) => {
+  try {
+    console.log('📝 Fetching all feedback from database...');
+    const result = await pool.query(
+      `SELECT f.*, r.full_name, r.contact_number
+       FROM user_feedback f
+       LEFT JOIN registrations r ON f.user_phone = r.contact_number
+       ORDER BY f.created_at DESC`
+    );
+    console.log(`✅ Successfully fetched ${result.rows.length} feedback entries`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching feedback:', error);
+    res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
+// Get feedback for a specific user
+app.get('/api/feedback/:userPhone', async (req, res) => {
+  try {
+    const { userPhone } = req.params;
+    console.log(`📝 Fetching feedback for user: ${userPhone}`);
+    const result = await pool.query(
+      'SELECT * FROM user_feedback WHERE user_phone = $1 ORDER BY created_at DESC',
+      [userPhone]
+    );
+    console.log(`✅ Successfully fetched ${result.rows.length} feedback entries`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching user feedback:', error);
+    res.status(500).json({ error: 'Failed to fetch user feedback' });
+  }
+});
+
+// Submit new feedback
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { user_phone, rating, feedback } = req.body;
+
+    console.log('📝 New feedback received');
+    console.log(`User Phone: ${user_phone}, Rating: ${rating}`);
+    console.log(`Feedback: ${feedback}`);
+
+    // Validate input
+    if (!user_phone || !rating || !feedback) {
+      console.log('❌ Feedback submission failed: Missing required fields');
+      return res.status(400).json({ error: 'user_phone, rating, and feedback are required' });
+    }
+
+    // Validate rating range
+    if (rating < 1 || rating > 5) {
+      console.log('❌ Feedback submission failed: Invalid rating');
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO user_feedback (user_phone, rating, feedback)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [user_phone, rating, feedback]
+    );
+
+    console.log(`✅ Feedback created with ID: ${result.rows[0].id}`);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error creating feedback:', error);
+    res.status(500).json({ error: 'Failed to create feedback' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err.stack);

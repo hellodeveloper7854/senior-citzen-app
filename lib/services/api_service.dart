@@ -516,25 +516,56 @@ class ApiService {
   // USER FEEDBACK
   // ============================================================================
 
-  // Note: Backend doesn't have feedback endpoints yet
-  // These are placeholders - add endpoints to backend if needed
   Future<void> submitFeedback({
     required String userPhone,
     required int rating,
     required String feedback,
   }) async {
-    // TODO: Add feedback endpoint to backend
-    print('Feedback submission not yet implemented in backend');
+    try {
+      print('📝 Submitting feedback for user: $userPhone');
+      print('⭐ Rating: $rating, Feedback: $feedback');
+
+      await _post('/feedback', {
+        'user_phone': userPhone,
+        'rating': rating,
+        'feedback': feedback,
+      });
+
+      print('✅ Feedback submitted successfully');
+    } catch (e) {
+      print('❌ Error submitting feedback: $e');
+      throw Exception('Failed to submit feedback: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> getAllFeedback() async {
-    // TODO: Add feedback endpoint to backend
-    return [];
+    try {
+      print('📝 Fetching all feedback...');
+      final response = await _get('/feedback');
+      if (response == null) return [];
+
+      final feedbackList = List<Map<String, dynamic>>.from(response);
+      print('✅ Retrieved ${feedbackList.length} feedback entries');
+      return feedbackList;
+    } catch (e) {
+      print('❌ Error fetching all feedback: $e');
+      return [];
+    }
   }
 
   Future<List<Map<String, dynamic>>> getUserFeedback(String userPhone) async {
-    // TODO: Add feedback endpoint to backend
-    return [];
+    try {
+      print('📝 Fetching feedback for user: $userPhone');
+      final response = await _get('/feedback/$userPhone');
+      if (response == null) return [];
+
+      final feedbackList = List<Map<String, dynamic>>.from(response);
+      print('✅ Retrieved ${feedbackList.length} feedback entries for user');
+      return feedbackList;
+    } catch (e) {
+      print('❌ Error fetching user feedback: $e');
+      return [];
+    }
   }
 
   // ============================================================================
