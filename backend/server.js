@@ -573,6 +573,7 @@ app.get('/api/sos-alerts/:id', async (req, res) => {
 
 // Create new SOS alert
 app.post('/api/sos-alerts', async (req, res) => {
+  const client = await pool.connect();
   try {
     const {
       user_id,
@@ -594,7 +595,18 @@ app.post('/api/sos-alerts', async (req, res) => {
     // Handle emergency_contacts - ensure it's an array
     const contactsArray = Array.isArray(emergency_contacts) ? emergency_contacts : [];
 
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // Fix sequence if needed (in case it's out of sync)
+    await client.query(`
+      SELECT setval(
+        pg_get_serial_sequence('sos_alerts', 'id'),
+        COALESCE((SELECT MAX(id) FROM sos_alerts), 0) + 1,
+        false
+      )
+    `);
+
+    const result = await client.query(
       `INSERT INTO sos_alerts (
         user_id, user_name, latitude, longitude,
         location_address, police_station, emergency_contacts, status
@@ -612,13 +624,18 @@ app.post('/api/sos-alerts', async (req, res) => {
       ]
     );
 
+    await client.query('COMMIT');
+
     console.log(`✅ SOS Alert created with ID: ${result.rows[0].id}, Status: ${result.rows[0].status}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('❌ Error creating SOS alert:', error);
     console.error('❌ Error details:', error.message);
     console.error('❌ Error code:', error.code);
     res.status(500).json({ error: 'Failed to create SOS alert', details: error.message });
+  } finally {
+    client.release();
   }
 });
 
