@@ -80,7 +80,7 @@ class _MyAppState extends State<MyApp> {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         navigatorKey: NavigationService().navigatorKey,
-        title: 'Stage आधारवड ठाणे पोलीस',
+        title: 'आधारवड ठाणे पोलीस',
         theme: ThemeData(
         colorScheme: const ColorScheme(
           primary: Color(0xFF3E0FAD),

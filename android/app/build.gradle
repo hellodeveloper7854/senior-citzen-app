@@ -22,7 +22,7 @@ def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '
 def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '1.0'
 
 android {
-    namespace "com.adhar.adharvadstage"
+    namespace "com.adhar.adharvad"
     compileSdk 36
 
     defaultConfig {
