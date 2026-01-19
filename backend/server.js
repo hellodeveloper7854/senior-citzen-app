@@ -97,14 +97,23 @@ app.post('/api/auth/login', async (req, res) => {
 
     console.log(`🔐 Login attempt for email: ${email}`);
 
-    // Check if user exists in user_credentials table
-    const credentialsResult = await pool.query(
+    // Check if user exists in user_credentials table by email first
+    let credentialsResult = await pool.query(
       'SELECT * FROM user_credentials WHERE email = $1',
       [email]
     );
 
+    // If not found by email, check by phone_number (in case user entered phone number as email)
     if (credentialsResult.rows.length === 0) {
-      console.log(`❌ Login failed: User not found with email: ${email}`);
+      console.log(`User not found by email: ${email}, checking by phone_number...`);
+      credentialsResult = await pool.query(
+        'SELECT * FROM user_credentials WHERE phone_number = $1',
+        [email]
+      );
+    }
+
+    if (credentialsResult.rows.length === 0) {
+      console.log(`❌ Login failed: User not found with email or phone: ${email}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
