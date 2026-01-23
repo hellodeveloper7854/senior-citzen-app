@@ -10,6 +10,7 @@ import '../services/supabase_service.dart';
 import '../services/navigation_service.dart';
 import '../services/tracking_service.dart';
 import '../services/route_service.dart';
+import '../services/google_directions_service.dart' as gds;
 
 class TrackMeScreen extends StatefulWidget {
   const TrackMeScreen({super.key});
@@ -41,11 +42,13 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   bool _isFullscreen = false;
   List<Map<String, dynamic>> _placePredictions = []; // For place predictions
   bool _showPredictions = false;
+  bool _trackingNotificationShown = false; // Flag to track if notification was already shown
 
   // Tracking related variables
   final SupabaseService _supabaseService = SupabaseService();
   final TrackingService _trackingService = TrackingService();
   final RouteService _routeService = RouteService();
+  final gds.GoogleDirectionsService _directionsService = gds.GoogleDirectionsService();
   String? _userPhone;
   String? _userName;
   String _emergencyPhoneNumber = '9326520525'; // Default fallback number
@@ -71,16 +74,27 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeNotificationListeners();
-    _loadEmergencyPhoneNumber(_emergencyServiceName);
-    _loadUserData();
-    _getCurrentLocation();
+
+    // IMPORTANT: Check tracking state FIRST before loading user data
+    // This prevents showing notification when resuming existing session
+    _isTracking = _trackingService.isTracking;
+
+    // If tracking is already active, don't show notification again
+    // Set this flag BEFORE calling _loadUserData()
+    if (_isTracking) {
+      _trackingNotificationShown = true;
+      print('TrackMeScreen: Tracking already active, notification will be suppressed');
+    }
 
     // Listen to global tracking service state changes
     _trackingService.addListener(_onTrackingServiceChanged);
 
-    // Initialize with current tracking state
-    _isTracking = _trackingService.isTracking;
+    // Now initialize other components
+    _initializeNotificationListeners();
+    _loadEmergencyPhoneNumber(_emergencyServiceName);
+    _loadUserData(); // This initializes TrackingService but flag is already set
+    _getCurrentLocation();
+
     if (_trackingService.selectedDestination != null) {
       _selectedDestination = _trackingService.selectedDestination;
       _destinationAddress = _trackingService.destinationAddress;
@@ -96,9 +110,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
           }
         });
       }
-
-      _drawRoute();
     }
+
+    _drawRoute();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -257,29 +271,77 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
   void _drawRoute() {
     if (_currentPosition != null && _selectedDestination != null) {
       if (_routeResult != null) {
-        // Use calculated route
-        final polyline = _routeService.createPolyline(
-          id: 'route',
-          points: _routeResult!.routePoints,
-          color: Colors.blue,
-          width: 5,
+        // Use calculated route with dotted/dashed pattern
+        final routePoints = _routeResult!.routePoints;
+
+        print('🗺️ Drawing route with ${routePoints.length} points');
+        print('   First point: ${routePoints.first}');
+        print('   Last point: ${routePoints.last}');
+
+        // Create dotted effect by drawing the route as a series of patterns
+        final dottedRoute = Polyline(
+          polylineId: const PolylineId('route_dotted'),
+          color: const Color(0xFF4285F4), // Google Maps blue
+          width: 4,
+          points: routePoints,
+          patterns: [
+            PatternItem.dash(20), // 20 pixels dash
+            PatternItem.gap(10),  // 10 pixels gap
+          ],
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
         );
 
+        // Add dotted circles along the route for better visibility
+        Set<Marker> routeMarkers = {};
+        final step = (routePoints.length / 10).ceil(); // Add marker every 10% of route
+
+        print('   Adding route markers every $step points');
+
+        for (int i = 0; i < routePoints.length; i += step) {
+          final point = routePoints[i];
+          routeMarkers.add(
+            Marker(
+              markerId: MarkerId('route_dot_$i'),
+              position: point,
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueBlue,
+              ),
+              infoWindow: InfoWindow(title: 'Route point ${i + 1}'),
+            ),
+          );
+        }
+
+        print('   Total markers to add: ${routeMarkers.length}');
+
         setState(() {
-          _polylines = {polyline};
+          _polylines = {dottedRoute};
+          // Merge with existing source and destination markers
+          _markers = {..._markers.where((m) => m.markerId.value == 'currentLocation' || m.markerId.value == 'destination'), ...routeMarkers};
         });
+
+        print('✅ Route drawn successfully');
       } else {
-        // Fallback to straight line
+        print('⚠️ No route result, drawing fallback straight line');
+        // Fallback to straight line with dotted pattern
         setState(() {
           _polylines = {
             Polyline(
               polylineId: const PolylineId('route'),
-              color: Colors.blue,
+              color: const Color(0xFF4285F4), // Google Maps blue
               width: 4,
               points: [
                 LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
                 _selectedDestination!,
               ],
+              patterns: [
+                PatternItem.dash(20), // 20 pixels dash
+                PatternItem.gap(10),  // 10 pixels gap
+              ],
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              jointType: JointType.round,
             ),
           };
         });
@@ -350,11 +412,14 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
           _selectedAddress = 'Destination updated';
         });
 
-        // Show notification
-        _showNotification(
-          title: 'Destination Updated',
-          body: 'Your tracking destination has been updated to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'new location'}.',
-        );
+        // Only show destination update notification once
+        // Don't show if we just showed the "tracking started" notification
+        if (_trackingNotificationShown) {
+          _showNotification(
+            title: 'Destination Updated',
+            body: 'Your tracking destination has been updated to ${_destinationAddress.isNotEmpty ? _destinationAddress : 'new location'}.',
+          );
+        }
       }
 
       return success;
@@ -369,20 +434,68 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     if (_currentPosition == null || _selectedDestination == null) return;
 
     try {
-      final routeResult = await _routeService.calculateRoute(
-        origin: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+      setState(() {
+        _isCalculatingRoute = true;
+      });
+
+      // Try Google Directions API first for real road routes
+      final origin = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+      final directionsResult = await _directionsService.getDirections(
+        origin: origin,
         destination: _selectedDestination!,
         travelMode: TravelMode.driving,
       );
 
-      setState(() {
-        _routeResult = routeResult;
-      });
+      if (directionsResult != null) {
+        // Successfully got real route from Google
+        setState(() {
+          _routeResult = directionsResult.toRouteResult();
+          _destinationAddress = directionsResult.endAddress;
+          _isCalculatingRoute = false;
+        });
+
+        print('✓ Using Google Directions API route');
+        print('Distance: ${directionsResult.distanceText}');
+        print('Duration: ${directionsResult.durationText}');
+      } else {
+        // Fallback to straight-line route if API fails
+        print('⚠ Google Directions API failed, using fallback route calculation');
+        final routeResult = await _routeService.calculateRoute(
+          origin: origin,
+          destination: _selectedDestination!,
+          travelMode: TravelMode.driving,
+        );
+
+        setState(() {
+          _routeResult = routeResult;
+          _isCalculatingRoute = false;
+        });
+      }
 
       // Draw route on map
       _drawRoute();
     } catch (e) {
       print('Error calculating route: $e');
+      setState(() {
+        _isCalculatingRoute = false;
+      });
+
+      // Try fallback route
+      try {
+        final routeResult = await _routeService.calculateRoute(
+          origin: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          destination: _selectedDestination!,
+          travelMode: TravelMode.driving,
+        );
+
+        setState(() {
+          _routeResult = routeResult;
+        });
+
+        _drawRoute();
+      } catch (e2) {
+        print('Fallback route also failed: $e2');
+      }
     }
   }
 
@@ -732,14 +845,24 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       print('Tracking service result: $success');
 
       if (success) {
-        String durationText = _selectedDurationMinutes != null
-            ? 'for ${_getDurationText(_selectedDurationMinutes!)}'
-            : _selectedDestination != null ? 'to your destination' : 'indefinitely';
+        // Only show notification if tracking wasn't already active before this call
+        // This prevents duplicate notifications when navigating back to the screen
+        bool wasAlreadyTracking = _trackingService.isTracking;
 
-        _showNotification(
-          title: 'Tracking Started',
-          body: 'Your location is being shared $durationText.',
-        );
+        if (!wasAlreadyTracking) {
+          String durationText = _selectedDurationMinutes != null
+              ? 'for ${_getDurationText(_selectedDurationMinutes!)}'
+              : _selectedDestination != null ? 'to your destination' : 'indefinitely';
+
+          _showNotification(
+            title: 'Tracking Started',
+            body: 'Your location is being shared $durationText.',
+          );
+
+          _trackingNotificationShown = true;
+        } else {
+          print('TrackMeScreen: Tracking already active, suppressing notification');
+        }
 
         _showMessage('Tracking started successfully', Colors.green);
         print('✓ Tracking started successfully with background monitoring');
@@ -878,6 +1001,10 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       final success = await _trackingService.stopTracking();
 
       if (success) {
+        // Reset notification flag when tracking stops
+        setState(() {
+          _trackingNotificationShown = false;
+        });
         print('Tracking stopped successfully');
       } else {
         _showMessage('Error stopping tracking', Colors.red);
@@ -1062,18 +1189,50 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header with back button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              // Header with back button and current location
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 8),
+                    // Current location display
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _currentAddress.length > 50
+                                ? '${_currentAddress.substring(0, 50)}...'
+                                : _currentAddress,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_currentLocationDetails.isNotEmpty)
+                            Text(
+                              _currentLocationDetails,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             // Container(
             //   padding: const EdgeInsets.all(16),
             //   child: Column(
@@ -1152,70 +1311,79 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
 
             // Location inputs section - hide in fullscreen
             if (!_isFullscreen)
-              Stack(
+              Column(
                 children: [
+                  // Place predictions dropdown - NOW ABOVE SEARCH BAR
+                  if (_showPredictions && _placePredictions.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: _placePredictions.length,
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1,
+                          color: Colors.grey[200],
+                          indent: 52,
+                        ),
+                        itemBuilder: (context, index) {
+                          final prediction = _placePredictions[index];
+                          return InkWell(
+                            onTap: () {
+                              _selectPlaceFromPrediction(prediction);
+                              setState(() {
+                                _showPredictions = false;
+                                _placePredictions = [];
+                                _searchController.clear();
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.location_on, color: Colors.red[600], size: 20),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          prediction['description'] ?? 'Unknown place',
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          'Tap to select',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Column(
                       children: [
-                        // Current location input
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(color: Colors.green[300]!),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.my_location, color: Colors.green[600], size: 24),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      _currentAddress,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: _isLoadingLocation ? Colors.grey[400] : Colors.green[700],
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_isLoadingLocation)
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                                      ),
-                                    )
-                                  else if (_currentPosition == null && !_isLoadingLocation)
-                                    IconButton(
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      icon: Icon(Icons.refresh, color: Colors.green[600], size: 20),
-                                      onPressed: _getCurrentLocation,
-                                    ),
-                                ],
-                              ),
-                              if (_currentLocationDetails.isNotEmpty && !_isLoadingLocation)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4, left: 36),
-                                  child: Text(
-                                    _currentLocationDetails,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.green[600],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
                         // Search bar for destination
                         Container(
                           decoration: BoxDecoration(
@@ -1329,44 +1497,6 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       ],
                     ),
                   ),
-                  // Place predictions dropdown - positioned as overlay
-                  if (_showPredictions && _placePredictions.isNotEmpty)
-                    Positioned(
-                      top: 130, // Adjust based on search bar position
-                      left: 16,
-                      right: 16,
-                      child: Container(
-                        constraints: const BoxConstraints(maxHeight: 200),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _placePredictions.length,
-                          itemBuilder: (context, index) {
-                            final prediction = _placePredictions[index];
-                            return ListTile(
-                              leading: Icon(Icons.location_on, color: Colors.red[600], size: 20),
-                              title: Text(
-                                prediction['description'] ?? 'Unknown place',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                              onTap: () {
-                                _selectPlaceFromPrediction(prediction);
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
                 ],
               ),
 
@@ -1374,12 +1504,12 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
             Expanded(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
                   children: [
                     GoogleMap(
                       initialCameraPosition: _currentPosition != null
@@ -1441,110 +1571,192 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
                       polylines: _polylines,
                       onTap: _onMapTap,
                     ),
-                    // Floating route information card - positioned at bottom right
+                    // Floating route information card - positioned at bottom center like Google Maps
                     if (_routeResult != null && _selectedDestination != null)
                       Positioned(
-                        bottom: 16, // Position from bottom
+                        bottom: 20, // Position from bottom
+                        left: 16, // Position from left
                         right: 16, // Position from right
-                        left: null, // Remove left constraint
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
                             ],
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min, // Only take needed width
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Distance
+                              // Route summary header
                               Row(
                                 children: [
-                                  Icon(Icons.straighten, color: Colors.blue[700], size: 20),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _routeResult!.distanceText,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue[700],
+                                  // Route icon
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.directions,
+                                      color: Colors.blue[700],
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Route info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Optimal Route',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey[600],
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        'Distance',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey[600],
+                                        Text(
+                                          _destinationAddress.isNotEmpty
+                                              ? (_destinationAddress.length > 40
+                                                  ? '${_destinationAddress.substring(0, 40)}...'
+                                                  : _destinationAddress)
+                                              : 'Selected Destination',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[500],
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Close button
+                                  GestureDetector(
+                                    onTap: _clearDestination,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.grey[600],
+                                        size: 20,
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
-                              // Vertical divider
-                              Container(
-                                height: 30,
-                                width: 1,
-                                color: Colors.grey[300],
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                              // Estimated time
+                              const SizedBox(height: 12),
+                              // Distance and Time - Google Maps style
                               Row(
                                 children: [
-                                  Icon(Icons.access_time, color: Colors.blue[700], size: 20),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _routeResult!.durationText,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue[700],
+                                  // Distance section
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.straighten,
+                                              color: Colors.blue[700],
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _routeResult!.distanceText,
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue[700],
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                      Text(
-                                        'Est. Time',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey[600],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Total Distance',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                  ),
+                                  // Vertical divider
+                                  Container(
+                                    height: 40,
+                                    width: 1,
+                                    color: Colors.grey[300],
+                                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                                  ),
+                                  // Time section
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.access_time,
+                                              color: Colors.green[700],
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _routeResult!.durationText,
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Est. Time',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                               // Loading indicator
                               if (_isCalculatingRoute)
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Updating...',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[600],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Calculating best route...',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                             ],
                           ),
