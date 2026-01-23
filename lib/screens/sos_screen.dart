@@ -385,12 +385,11 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       _sendLocationToContacts(position);
       _sendSOSAlertToAdmin(position);
 
-      // Show persistent notification
-      await _showPersistentSOSNotification();
-    } else if (_currentAlertId != null) {
-      // If using existing SOS, show persistent notification
+      // Show persistent notification only for new SOS
       await _showPersistentSOSNotification();
     }
+    // Note: For existing SOS alerts, don't show the notification again
+    // The notification should already be active from when it was first created
   }
 
   void _updateMapWithDefaultLocation() {
