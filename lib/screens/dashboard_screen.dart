@@ -776,157 +776,195 @@ class DashboardScreenState extends State<DashboardScreen> {
 
             // SOS Active Alert Banner (if there's an active SOS)
             if (_hasActiveSOS)
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.red.shade600, Colors.red.shade700],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              GestureDetector(
+                onTap: () {
+                  // Navigate to SOS screen when banner is tapped
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SosScreen()),
+                  ).then((_) {
+                    // Refresh SOS status when returning from SOS screen
+                    _checkActiveSOS();
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red.shade600, Colors.red.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.shade400.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.shade400.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.emergency,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.emergency,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'SOS Alert Active',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'SOS Alert Active',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Help is on the way',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 11,
+                            const SizedBox(height: 1),
+                            Text(
+                              'Tap to view details',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 11,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    // Pulsing indicator
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.5),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                      // Pulsing indicator
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      // Add arrow icon to indicate it's clickable
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white.withOpacity(0.9),
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
             // Active Tracking Alert Banner (if there's an active tracking session)
             if (_hasActiveTracking)
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green.shade600, Colors.green.shade700],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              GestureDetector(
+                onTap: () {
+                  // Navigate to Track Me screen when banner is tapped
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const track_screen.TrackMeScreen()),
+                  ).then((_) {
+                    // Refresh tracking status when returning from track me screen
+                    _checkActiveTracking();
+                  });
+                },
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade600, Colors.green.shade700],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.shade400.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.shade400.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Tracking Active',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Tracking Active',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Your location is being tracked',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 11,
+                            const SizedBox(height: 1),
+                            Text(
+                              'Tap to view details',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 11,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    // Pulsing indicator
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.5),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                      // Pulsing indicator
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.5),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      // Add arrow icon to indicate it's clickable
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white.withOpacity(0.9),
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
