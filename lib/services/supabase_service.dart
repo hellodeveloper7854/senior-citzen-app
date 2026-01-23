@@ -313,6 +313,14 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  // Mark complaint as viewed
+  Future<void> markComplaintAsViewed(int complaintId) async {
+    await _supabase
+        .from('complaints')
+        .update({'is_viewed': true, 'updated_at': DateTime.now().toIso8601String()})
+        .eq('id', complaintId);
+  }
+
   // Create SOS alert for admin monitoring
   Future<int?> createSOSAlert({
     required String userId, // phone number
@@ -381,6 +389,14 @@ class SupabaseService {
     await _supabase
         .from('sos_alerts')
         .update(updates)
+        .eq('id', alertId);
+  }
+
+  // Mark SOS alert as viewed
+  Future<void> markSOSAlertAsViewed(int alertId) async {
+    await _supabase
+        .from('sos_alerts')
+        .update({'is_viewed': true})
         .eq('id', alertId);
   }
 

@@ -258,94 +258,42 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   // --- Show Notifications Bottom Sheet ---
   Future<void> _showNotificationsBottomSheet() async {
+    // Create a completer to track when the bottom sheet closes
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF340298),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Notifications',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
+        return _NotificationsBottomSheet(
+          onNotificationTap: (notification) async {
+            // Mark as viewed and navigate
+            if (!notification['is_viewed']) {
+              await _markSingleNotificationAsViewed(notification);
+            }
 
-              // Notifications List
-              Expanded(
-                child: FutureBuilder(
-                  future: _fetchNotifications(),
-                  builder: (context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.notifications_none,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'No notifications',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final notifications = snapshot.data!;
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: notifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = notifications[index];
-                        return _buildNotificationItem(notification);
-                      },
-                    );
-                  },
+            // Navigate based on notification type
+            if (notification['type'] == 'sos') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SosScreen()),
+              ).then((_) {
+                _checkActiveSOS();
+                _loadUnreadNotifications();
+              });
+            } else if (notification['type'] == 'complaint') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Complaint status: ${notification['status']}'),
+                  duration: const Duration(seconds: 2),
                 ),
-              ),
-            ],
-          ),
+              );
+            }
+          },
         );
       },
-    ).then((_) {
+    ).then((_) async {
+      // Mark all notifications as viewed when closing bottom sheet
+      await _markAllNotificationsAsViewed();
       // Refresh notification count when closing bottom sheet
       _loadUnreadNotifications();
     });
@@ -409,6 +357,58 @@ class DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Mark all notifications as viewed
+  Future<void> _markAllNotificationsAsViewed() async {
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) return;
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) return;
+
+      final userPhone = credentials['phone_number'];
+
+      // Mark all complaints as viewed
+      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      for (var complaint in complaints) {
+        if (complaint['status'] != null && complaint['status'] != 'pending') {
+          if (complaint['is_viewed'] == null || complaint['is_viewed'] == false) {
+            await _supabaseService.markComplaintAsViewed(complaint['id']);
+          }
+        }
+      }
+
+      // Mark all SOS alerts as viewed
+      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      for (var alert in sosAlerts) {
+        if (alert['status'] != 'active') {
+          if (alert['is_viewed'] == null || alert['is_viewed'] == false) {
+            await _supabaseService.markSOSAlertAsViewed(alert['id']);
+          }
+        }
+      }
+
+      print('All notifications marked as viewed');
+    } catch (e) {
+      print('Error marking notifications as viewed: $e');
+    }
+  }
+
+  // Mark a single notification as viewed
+  Future<void> _markSingleNotificationAsViewed(Map<String, dynamic> notification) async {
+    try {
+      if (notification['type'] == 'complaint') {
+        await _supabaseService.markComplaintAsViewed(notification['id']);
+        print('Complaint notification marked as viewed');
+      } else if (notification['type'] == 'sos') {
+        await _supabaseService.markSOSAlertAsViewed(notification['id']);
+        print('SOS notification marked as viewed');
+      }
+    } catch (e) {
+      print('Error marking notification as viewed: $e');
+    }
+  }
+
   // Build notification item widget
   Widget _buildNotificationItem(Map<String, dynamic> notification) {
     IconData icon;
@@ -428,70 +428,102 @@ class DashboardScreenState extends State<DashboardScreen> {
         iconColor = Colors.grey;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: notification['is_viewed'] ? Colors.grey.shade100 : Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: notification['is_viewed'] ? Colors.grey.shade300 : Colors.blue.shade200,
-          width: notification['is_viewed'] ? 1 : 2,
+    return GestureDetector(
+      onTap: () async {
+        // Mark individual notification as viewed when tapped
+        if (!notification['is_viewed']) {
+          await _markSingleNotificationAsViewed(notification);
+          // Refresh the notifications list
+          if (mounted) {
+            setState(() {});
+          }
+        }
+
+        // Navigate based on notification type
+        if (notification['type'] == 'sos') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SosScreen()),
+          ).then((_) {
+            _checkActiveSOS();
+            _loadUnreadNotifications();
+          });
+        } else if (notification['type'] == 'complaint') {
+          // Navigate to complaint details or complaints list
+          // You can add navigation logic here when complaint detail screen is available
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Complaint status: ${notification['status']}'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: notification['is_viewed'] ? Colors.grey.shade100 : Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: notification['is_viewed'] ? Colors.grey.shade300 : Colors.blue.shade200,
+            width: notification['is_viewed'] ? 1 : 2,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification['title'],
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: notification['is_viewed'] ? Colors.grey.shade700 : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  notification['message'],
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTimestamp(notification['timestamp']),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!notification['is_viewed'])
+        child: Row(
+          children: [
             Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification['title'],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: notification['is_viewed'] ? Colors.grey.shade700 : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification['message'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatTimestamp(notification['timestamp']),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+            if (!notification['is_viewed'])
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(left: 8),
+                decoration: const BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1215,5 +1247,320 @@ class DashboardScreenState extends State<DashboardScreen> {
     );
 
     return shouldExit ?? false;
+  }
+}
+
+// Separate widget for notifications bottom sheet to handle state properly
+class _NotificationsBottomSheet extends StatefulWidget {
+  final Function(Map<String, dynamic>) onNotificationTap;
+
+  const _NotificationsBottomSheet({
+    required this.onNotificationTap,
+  });
+
+  @override
+  State<_NotificationsBottomSheet> createState() => _NotificationsBottomSheetState();
+}
+
+class _NotificationsBottomSheetState extends State<_NotificationsBottomSheet> {
+  final SupabaseService _supabaseService = SupabaseService();
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final email = await _supabaseService.getCurrentUserEmail();
+      if (email == null) {
+        setState(() {
+          _notifications = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final credentials = await _supabaseService.getUserCredentials(email);
+      if (credentials == null) {
+        setState(() {
+          _notifications = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final userPhone = credentials['phone_number'];
+      List<Map<String, dynamic>> allNotifications = [];
+
+      // Get complaints with status updates (only unviewed)
+      final complaints = await _supabaseService.getUserComplaints(userPhone);
+      for (var complaint in complaints) {
+        // Only show complaints with status updates that are NOT pending and NOT viewed
+        if (complaint['status'] != null &&
+            complaint['status'] != 'pending' &&
+            (complaint['is_viewed'] == null || complaint['is_viewed'] == false)) {
+          allNotifications.add({
+            'type': 'complaint',
+            'id': complaint['id'],
+            'title': 'Complaint Update',
+            'message': 'Your complaint status is: ${complaint['status']}',
+            'timestamp': complaint['submitted_at'],
+            'status': complaint['status'],
+            'is_viewed': complaint['is_viewed'] ?? false,
+          });
+        }
+      }
+
+      // Get SOS alerts with responses (only unviewed and non-active)
+      final sosAlerts = await _supabaseService.getUserSOSAlerts(userPhone);
+      for (var alert in sosAlerts) {
+        // Only show alerts that are not active and not viewed
+        if (alert['status'] != 'active' &&
+            (alert['status'] == 'resolved' || alert['status'] == 'Request terminate' ||
+             alert['status'] == 'expired') &&
+            (alert['is_viewed'] == null || alert['is_viewed'] == false)) {
+          allNotifications.add({
+            'type': 'sos',
+            'id': alert['id'],
+            'title': 'SOS Alert ${alert['status']?.toString().toUpperCase() ?? ''}',
+            'message': alert['notes'] ?? 'Your SOS alert has been ${alert['status']}',
+            'timestamp': alert['alert_timestamp'],
+            'status': alert['status'],
+            'is_viewed': alert['is_viewed'] ?? false,
+          });
+        }
+      }
+
+      // Sort by timestamp descending
+      allNotifications.sort((a, b) {
+        final aTime = DateTime.parse(a['timestamp']);
+        final bTime = DateTime.parse(b['timestamp']);
+        return bTime.compareTo(aTime);
+      });
+
+      if (mounted) {
+        setState(() {
+          _notifications = allNotifications;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading notifications: $e');
+      if (mounted) {
+        setState(() {
+          _notifications = [];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inHours < 1) {
+        return '${difference.inMinutes}m ago';
+      } else if (difference.inDays < 1) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}d ago';
+      } else {
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+    } catch (e) {
+      return timestamp;
+    }
+  }
+
+  IconData _getNotificationIcon(String type) {
+    switch (type) {
+      case 'complaint':
+        return Icons.report_problem;
+      case 'sos':
+        return Icons.emergency;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getNotificationIconColor(String type) {
+    switch (type) {
+      case 'complaint':
+        return Colors.orange;
+      case 'sos':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF340298),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Notifications',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          // Notifications List
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notifications.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.notifications_none,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No notifications',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = _notifications[index];
+                          final icon = _getNotificationIcon(notification['type']);
+                          final iconColor = _getNotificationIconColor(notification['type']);
+
+                          return GestureDetector(
+                            onTap: () async {
+                              // Mark as viewed and navigate
+                              await widget.onNotificationTap(notification);
+                              // Refresh the list - this will remove the notification since it's now viewed
+                              _loadNotifications();
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: notification['is_viewed']
+                                    ? Colors.grey.shade100
+                                    : Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: notification['is_viewed']
+                                      ? Colors.grey.shade300
+                                      : Colors.blue.shade200,
+                                  width: notification['is_viewed'] ? 1 : 2,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: iconColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(icon, color: iconColor, size: 24),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          notification['title'],
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: notification['is_viewed']
+                                                ? Colors.grey.shade700
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          notification['message'],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatTimestamp(notification['timestamp']),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (!notification['is_viewed'])
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      margin: const EdgeInsets.only(left: 8),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.blue,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
   }
 }

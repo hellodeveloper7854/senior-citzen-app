@@ -75,6 +75,8 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
         _updateStatus('SOS Alert Already Active');
         _loadEmergencyContactsAndProfile();
         _getCurrentLocation();
+        // Mark the SOS alert as viewed since user opened the screen
+        _markSOSAlertAsViewed();
       }
     });
   }
@@ -616,6 +618,18 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     final seconds = remaining.inSeconds % 60;
 
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  // Mark SOS alert as viewed when user opens the screen
+  Future<void> _markSOSAlertAsViewed() async {
+    if (_currentAlertId == null) return;
+
+    try {
+      await _supabaseService.markSOSAlertAsViewed(_currentAlertId!);
+      print('SOS alert marked as viewed');
+    } catch (e) {
+      print('Error marking SOS alert as viewed: $e');
+    }
   }
 
   // --- ROBUST PHONE CALL FUNCTIONALITY FOR LATEST ANDROID DEVICES ---
