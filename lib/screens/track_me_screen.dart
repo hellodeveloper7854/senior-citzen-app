@@ -585,8 +585,9 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
             _userName = profile['full_name'] ?? 'Unknown User';
           }
 
-          // Note: Existing tracking session is now handled by TrackingService
-          // No need to check here as it's already initialized in main.dart
+          // Initialize TrackingService with user data
+          await _trackingService.initialize();
+          print('TrackMeScreen: User data loaded and TrackingService initialized');
         }
       }
     } catch (e) {
@@ -704,6 +705,16 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
     print('Current position: $_currentPosition');
     print('Selected destination: $_selectedDestination');
     print('Selected duration: $_selectedDurationMinutes');
+
+    // Ensure TrackingService is initialized with user data
+    if (_trackingService.userPhone == null) {
+      print('TrackingService not initialized, initializing now...');
+      await _trackingService.initialize();
+      if (_trackingService.userPhone == null) {
+        _showMessage('Failed to initialize tracking service. Please try again.', Colors.red);
+        return;
+      }
+    }
 
     // Request background location permission first
     await _requestBackgroundLocationPermission();
