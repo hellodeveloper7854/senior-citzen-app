@@ -8,7 +8,7 @@ import 'sos_alerts_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'helpline_screen.dart';
 import 'record_screen.dart';
-import 'track_me_screen2.dart' as track_screen;
+// import 'track_me_screen2.dart' as track_screen; // COMMENTED OUT: Track Me screen
 import 'profile_screen.dart';
 import '../services/api_service.dart';
 import '../utils/image_util.dart';
@@ -39,8 +39,8 @@ class DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingSOSStatus = true;
 
   // Active Tracking status
-  bool _hasActiveTracking = false;
-  bool _isLoadingTrackingStatus = true;
+  // bool _hasActiveTracking = false; // COMMENTED OUT: Track Me screen
+  // bool _isLoadingTrackingStatus = true; // COMMENTED OUT: Track Me screen
 
   // Notification counts
   int _unreadNotificationCount = 0;
@@ -51,7 +51,7 @@ class DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadFullName();
     _checkActiveSOS();
-    _checkActiveTracking();
+    // _checkActiveTracking(); // COMMENTED OUT: Track Me screen
     _loadUnreadNotifications();
   }
 
@@ -84,7 +84,7 @@ class DashboardScreenState extends State<DashboardScreen> {
   Future<void> _onRefresh() async {
     await _loadFullName();
     await _checkActiveSOS();
-    await _checkActiveTracking();
+    // await _checkActiveTracking(); // COMMENTED OUT: Track Me screen
     await _loadUnreadNotifications();
     // Add a small delay to show the refresh indicator
     await Future.delayed(const Duration(milliseconds: 500));
@@ -144,28 +144,29 @@ class DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- Check for Active Tracking Session ---
-  Future<void> _checkActiveTracking() async {
-    try {
-      final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
-      if (phoneNumber != null) {
-        final activeSession = await _apiService.getActiveTrackingSession(phoneNumber);
+  // COMMENTED OUT: Track Me screen
+  // Future<void> _checkActiveTracking() async {
+  //   try {
+  //     final phoneNumber = await _apiService.getCurrentUserPhoneNumber();
+  //     if (phoneNumber != null) {
+  //       final activeSession = await _apiService.getActiveTrackingSession(phoneNumber);
 
-        if (mounted) {
-          setState(() {
-            _hasActiveTracking = activeSession != null;
-            _isLoadingTrackingStatus = false;
-          });
-        }
-      }
-    } catch (e) {
-      // Silently ignore errors, just mark as not loading
-      if (mounted) {
-        setState(() {
-          _isLoadingTrackingStatus = false;
-        });
-      }
-    }
-  }
+  //       if (mounted) {
+  //         setState(() {
+  //           _hasActiveTracking = activeSession != null;
+  //           _isLoadingTrackingStatus = false;
+  //         });
+  //       }
+  //     }
+  //   } catch (e) {
+  //     // Silently ignore errors, just mark as not loading
+  //     if (mounted) {
+  //       setState(() {
+  //         _isLoadingTrackingStatus = false;
+  //       });
+  //     }
+  //   }
+  // }
 
   // --- Load Unread Notifications Count ---
   Future<void> _loadUnreadNotifications() async {
@@ -834,82 +835,83 @@ class DashboardScreenState extends State<DashboardScreen> {
               ),
 
             // Active Tracking Alert Banner (if there's an active tracking session)
-            if (_hasActiveTracking)
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green.shade600, Colors.green.shade700],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.shade400.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Tracking Active',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Your location is being tracked',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Pulsing indicator
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.5),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            // COMMENTED OUT: Track Me screen
+            // if (_hasActiveTracking)
+            //   Container(
+            //     margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            //     padding: const EdgeInsets.all(10),
+            //     decoration: BoxDecoration(
+            //       gradient: LinearGradient(
+            //         colors: [Colors.green.shade600, Colors.green.shade700],
+            //         begin: Alignment.topLeft,
+            //         end: Alignment.bottomRight,
+            //       ),
+            //       borderRadius: BorderRadius.circular(12),
+            //       boxShadow: [
+            //         BoxShadow(
+            //           color: Colors.green.shade400.withOpacity(0.4),
+            //           blurRadius: 8,
+            //           offset: const Offset(0, 4),
+            //         ),
+            //       ],
+            //     ),
+            //     child: Row(
+            //       children: [
+            //         Container(
+            //           padding: const EdgeInsets.all(6),
+            //           decoration: BoxDecoration(
+            //             color: Colors.white.withOpacity(0.2),
+            //             borderRadius: BorderRadius.circular(6),
+            //           ),
+            //           child: const Icon(
+            //             Icons.location_on,
+            //             color: Colors.white,
+            //             size: 20,
+            //           ),
+            //         ),
+            //         const SizedBox(width: 10),
+            //         Expanded(
+            //           child: Column(
+            //             crossAxisAlignment: CrossAxisAlignment.start,
+            //             children: [
+            //               const Text(
+            //                 'Tracking Active',
+            //                 style: TextStyle(
+            //                   color: Colors.white,
+            //                   fontSize: 14,
+            //                   fontWeight: FontWeight.bold,
+            //                 ),
+            //               ),
+            //               const SizedBox(height: 1),
+            //               Text(
+            //                 'Your location is being tracked',
+            //                 style: TextStyle(
+            //                   color: Colors.white.withOpacity(0.9),
+            //                   fontSize: 11,
+            //                 ),
+            //               ),
+            //             ],
+            //           ),
+            //         ),
+            //         // Pulsing indicator
+            //         Container(
+            //           width: 10,
+            //           height: 10,
+            //           decoration: BoxDecoration(
+            //             color: Colors.white,
+            //             shape: BoxShape.circle,
+            //             boxShadow: [
+            //               BoxShadow(
+            //                 color: Colors.white.withOpacity(0.5),
+            //                 blurRadius: 6,
+            //                 spreadRadius: 1,
+            //               ),
+            //             ],
+            //           ),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
 
             // 2. Main Content Grid (Matches the image)
             Expanded(
@@ -1034,23 +1036,23 @@ class DashboardScreenState extends State<DashboardScreen> {
                         image: "assets/microphone.png"
                       ),
 
-                      // 5. Track Me (Advanced)
-                      _buildActionCard(
-                        title: 'Track Me',
-                        subtitle: '(Advanced)',
-                        icon: Icons.location_on, // Icon approximation
-                        iconColor: const Color(0xFF3E0FAD),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const track_screen.TrackMeScreen()),
-                          ).then((_) {
-                            // Refresh tracking status when returning from track me screen
-                            _checkActiveTracking();
-                          });
-                        },
-                        image: "assets/location.png"
-                      ),
+                      // 5. Track Me (Advanced) - COMMENTED OUT
+                      // _buildActionCard(
+                      //   title: 'Track Me',
+                      //   subtitle: '(Advanced)',
+                      //   icon: Icons.location_on, // Icon approximation
+                      //   iconColor: const Color(0xFF3E0FAD),
+                      //   onTap: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(builder: (context) => const track_screen.TrackMeScreen()),
+                      //     ).then((_) {
+                      //       // Refresh tracking status when returning from track me screen
+                      //       _checkActiveTracking();
+                      //     });
+                      //   },
+                      //   image: "assets/location.png"
+                      // ),
 
                       // 6. Support
                       _buildActionCard(
