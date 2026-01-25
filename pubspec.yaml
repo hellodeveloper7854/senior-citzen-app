@@ -135,3 +135,7 @@ flutter_native_splash:
   android: true
   ios: true
   web: true
+
+# Dependency overrides to fix compatibility issues
+dependency_overrides:
+  win32: ^5.6.0

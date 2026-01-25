@@ -224,21 +224,17 @@ class ApiService {
   }
 
   Future<void> updatePassword(String identifier, String newPassword) async {
-    final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((key) => key.startsWith('user_credentials_'));
-
-    for (final key in keys) {
-      final data = prefs.getString(key);
-      if (data != null) {
-        final credentials = jsonDecode(data);
-        if (credentials['email'] == identifier || credentials['phone_number'] == identifier) {
-          credentials['password'] = _hashPassword(newPassword);
-          await prefs.setString(key, jsonEncode(credentials));
-          return;
-        }
-      }
+    try {
+      print('🔐 Resetting password for: $identifier');
+      await _put('/auth/reset-password', {
+        'identifier': identifier,
+        'newPassword': newPassword,
+      });
+      print('✅ Password reset successful');
+    } catch (e) {
+      print('❌ Error resetting password: $e');
+      throw Exception('Failed to reset password: $e');
     }
-    throw Exception('User not found');
   }
 
   // ============================================================================

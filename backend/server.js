@@ -202,6 +202,51 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// Reset password endpoint
+app.put('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { identifier, newPassword } = req.body;
+
+    if (!identifier || !newPassword) {
+      console.log('❌ Password reset failed: Missing identifier or new password');
+      return res.status(400).json({ error: 'Identifier and new password are required' });
+    }
+
+    console.log(`🔐 Password reset request for: ${identifier}`);
+
+    // Check if user exists by email or phone number
+    let credentialsResult = await pool.query(
+      'SELECT * FROM user_credentials WHERE email = $1',
+      [identifier]
+    );
+
+    // If not found by email, check by phone_number
+    if (credentialsResult.rows.length === 0) {
+      credentialsResult = await pool.query(
+        'SELECT * FROM user_credentials WHERE phone_number = $1',
+        [identifier]
+      );
+    }
+
+    if (credentialsResult.rows.length === 0) {
+      console.log(`❌ Password reset failed: User not found with identifier: ${identifier}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update password
+    await pool.query(
+      'UPDATE user_credentials SET password = $1 WHERE email = $2 OR phone_number = $2',
+      [newPassword, identifier]
+    );
+
+    console.log(`✅ Password reset successful for: ${identifier}`);
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('❌ Error during password reset:', error);
+    res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
 // ==================== USERS ENDPOINTS ====================
 
 // Get all user registrations
