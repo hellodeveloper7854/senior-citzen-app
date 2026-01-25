@@ -1001,11 +1001,25 @@ class _TrackMeScreenState extends State<TrackMeScreen> {
       final success = await _trackingService.stopTracking();
 
       if (success) {
-        // Reset notification flag when tracking stops
+        // Clear map: remove destination, route, and markers
         setState(() {
+          _selectedDestination = null;
+          _destinationAddress = '';
+          _selectedAddress = '';
+          _routeResult = null;
+          _polylines = {};
+          _selectedDurationMinutes = null;
           _trackingNotificationShown = false;
         });
-        print('Tracking stopped successfully');
+
+        // Update markers to show only current location
+        _updateMarkers();
+
+        // Clear route from map
+        _drawRoute();
+
+        _showMessage('Tracking stopped', Colors.green);
+        print('✓ Tracking stopped and map cleared');
       } else {
         _showMessage('Error stopping tracking', Colors.red);
       }
